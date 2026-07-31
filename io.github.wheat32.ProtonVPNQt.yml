@@ -1,6 +1,6 @@
 app-id: io.github.wheat32.ProtonVPNQt
 runtime: org.kde.Platform
-runtime-version: '6.10'
+runtime-version: '6.11'
 sdk: org.kde.Sdk
 command: proton_vpn_qt
 finish-args:
@@ -24,6 +24,26 @@ finish-args:
   - --filesystem=~/.config/autostart
 
 modules:
+  # natpmpc is required for ProtonVPN port forwarding. The sandbox has no access
+  # to host binaries, so it must be bundled: NatPmpManager resolves it from PATH
+  # (/app/bin) exactly as it does on native and AppImage builds. Safe to run
+  # in-sandbox because --share=network puts us in the host network namespace,
+  # so the VPN tunnel's 10.2.0.1 NAT-PMP gateway is directly reachable.
+  - name: libnatpmp
+    buildsystem: simple
+    build-commands:
+      - make
+      - make install INSTALLPREFIX=/app
+    # Only the natpmpc binary and libnatpmp.so.1 are needed at runtime; the
+    # install target also drops dev artifacts we don't ship.
+    cleanup:
+      - /include
+      - /lib/*.a
+    sources:
+      - type: archive
+        url: http://miniupnp.free.fr/files/libnatpmp-20230423.tar.gz
+        sha256: 0684ed2c8406437e7519a1bd20ea83780db871b3a3a5d752311ba3e889dbfc70
+
   - name: proton_vpn_qt
     buildsystem: cmake-ninja
     builddir: true
