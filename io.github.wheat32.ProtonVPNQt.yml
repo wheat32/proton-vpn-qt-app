@@ -50,19 +50,6 @@ modules:
     config-opts:
       - -DCMAKE_BUILD_TYPE=Release
     subdir: src
-    post-install:
-      # Rename the icon to match the Flatpak app-id so the launcher can find it
-      - mv /app/share/icons/hicolor/scalable/apps/proton-vpn-qt-app.svg
-          /app/share/icons/hicolor/scalable/apps/io.github.wheat32.ProtonVPNQt.svg
-      # Patch the Icon= and Exec= fields in the installed .desktop file
-      - sed -i 's/^Icon=.*/Icon=io.github.wheat32.ProtonVPNQt/'
-          /app/share/applications/proton-vpn-qt-app.desktop
-      - sed -i 's/^Exec=.*/Exec=proton_vpn_qt/'
-          /app/share/applications/proton-vpn-qt-app.desktop
-      # Rename the .desktop file itself to the app-id (required by Flatpak)
-      - mv /app/share/applications/proton-vpn-qt-app.desktop
-          /app/share/applications/io.github.wheat32.ProtonVPNQt.desktop
-
     sources:
       - type: dir
         path: .

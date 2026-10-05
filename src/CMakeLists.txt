@@ -156,13 +156,16 @@ install(TARGETS proton_vpn_qt
         RUNTIME DESTINATION bin
 )
 
+# The desktop file and icon are installed under the app ID, matching the
+# metainfo's <launchable> and the names Flatpak requires.
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../proton-vpn-qt-app.desktop
         DESTINATION share/applications
+        RENAME io.github.wheat32.ProtonVPNQt.desktop
 )
 
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../proton-vpn-sign.svg
         DESTINATION share/icons/hicolor/scalable/apps
-        RENAME proton-vpn-qt-app.svg
+        RENAME io.github.wheat32.ProtonVPNQt.svg
 )
 
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../io.github.wheat32.ProtonVPNQt.metainfo.xml
