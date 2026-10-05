@@ -92,6 +92,7 @@ body:
     id: additional-context
     attributes:
       label: Additional Context
-      description: Any other context that might be relevant: recent system updates, VPN plan type, affected feature, etc.
+      description: >
+        Any other context that might be relevant: recent system updates, VPN plan type, affected feature, etc.
     validations:
       required: false
