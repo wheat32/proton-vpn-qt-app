@@ -340,8 +340,16 @@ QLabel#infoValue {
     font-weight: bold;
 }
 
+/*  Painted here instead of by the Qt style, so the line looks the same under
+    Breeze (native builds, Flatpak) and Fusion (AppImage). The color is what
+    Breeze drew for "color: #c8c8d8": 20% of it over the #f0f0f5 window. The
+    window-colored top and bottom borders keep the line 1px thick in the
+    middle of the 3px frame.  */
 QFrame#divider {
-    color: #c8c8d8;
+    border: none;
+    border-top: 1px solid #f0f0f5;
+    border-bottom: 1px solid #f0f0f5;
+    background-color: #e8e8ef;
 }
 
 QSplitter::handle {
@@ -468,8 +476,12 @@ QLabel#plusDividerLabel {
     font-weight: bold;
     background-color: transparent;
 }
+/*  Painted like QFrame#divider, for the same reason  */
 QFrame#plusDividerLine {
-    color: #c8c8d8;
+    border: none;
+    border-top: 1px solid #f0f0f5;
+    border-bottom: 1px solid #f0f0f5;
+    background-color: #e8e8ef;
 }
 
 /*  App-tab section headers  */
@@ -590,6 +602,7 @@ QComboBox {
     border-radius: 6px;
     padding: 4px 8px;
     min-height: 22px;
+    combobox-popup: 0;
 }
 QComboBox:hover {
     border-color: #6d4aff;
@@ -597,15 +610,31 @@ QComboBox:hover {
 QComboBox:focus {
     border: 1px solid #6d4aff;
 }
+/*  The popup and its items are drawn entirely by these rules (combo boxes get
+    a QStyledItemDelegate, see SettingsPage::makeComboBox()), so they look the
+    same under Breeze (native builds, Flatpak) and Fusion (AppImage). They copy
+    Breeze's look: 30px items with a rounded, outlined highlight. Breeze's first
+    item is 1px taller, hence the extra top padding, and the -1px item padding
+    lines the text up with Breeze's.  */
 QComboBox QAbstractItemView {
     background-color: #ffffff;
     color: #1a1a2e;
     border: 1px solid #c8c8d8;
     border-radius: 6px;
-    selection-background-color: #6d4aff;
-    selection-color: white;
     outline: none;
-    padding: 4px;
+    padding: 5px 4px 4px 4px;
+}
+QComboBox QAbstractItemView::item {
+    min-height: 28px;
+    padding: 0px 0px 0px -1px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: #1a1a2e;
+}
+QComboBox QAbstractItemView::item:selected {
+    background-color: #d2cbe4;
+    border-color: #7862ae;
+    color: #1a1a2e;
 }
 QComboBox:disabled {
     color: #aaaabb;

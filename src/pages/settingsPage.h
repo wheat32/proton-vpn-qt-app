@@ -178,6 +178,9 @@ private:
                              std::function<void()> onAccept);
     static void addDivider(QVBoxLayout* layout, QWidget* parent);
     static QWidget* makePlusDivider(QWidget* parent);
+    // A combo box whose popup items are drawn by the stylesheet, so the
+    // dropdown looks the same under every Qt style.
+    static QComboBox* makeComboBox(QWidget* parent);
     void updatePlusSectionState() const;
     void maybeWarnReconnect(const QString& cliOutput);
 

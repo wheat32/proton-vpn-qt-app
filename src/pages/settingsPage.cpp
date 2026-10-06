@@ -35,6 +35,7 @@
 #include <QSpinBox>
 #include <QStandardPaths>
 #include <QStyle>
+#include <QStyledItemDelegate>
 #include <QSystemTrayIcon>
 #include <QTextBrowser>
 #include <QVersionNumber>
@@ -191,6 +192,18 @@ void SettingsPage::addDivider(QVBoxLayout* layout, QWidget* parent)
     layout->addWidget(div);
 }
 
+QComboBox* SettingsPage::makeComboBox(QWidget* parent)
+{
+    QComboBox* combo = new QComboBox(parent);
+    // Breeze replaces a combo box's default item delegate with its own, which
+    // draws the popup items itself and ignores the stylesheet, and Fusion (the
+    // AppImage's style) draws them differently again. Breeze leaves a
+    // QStyledItemDelegate alone, and it draws items with the stylesheet's
+    // "QComboBox QAbstractItemView::item" rules under every style.
+    combo->setItemDelegate(new QStyledItemDelegate(combo));
+    return combo;
+}
+
 QWidget* SettingsPage::makePlusDivider(QWidget* parent)
 {
     QWidget* container = new QWidget(parent);
@@ -339,7 +352,7 @@ QWidget* SettingsPage::makeComboRow(QWidget* parent, const QString& label,
                                     const bool requiresReconnect)
 {
     auto [row, rl] = makeSettingRow(parent, label, desc);
-    QComboBox* combo = new QComboBox(row);
+    QComboBox* combo = makeComboBox(row);
     for (const auto& l : labels)
     {
         combo->addItem(l);
@@ -555,7 +568,7 @@ void SettingsPage::buildAppTab(QTabWidget* tabs)
             srvRl->addWidget(makeTextCol(m_autoConnectServerRow,
                                          tr("Server"),
                                          tr("Choose which server to connect to on startup.")), 1);
-            m_autoConnectServerCombo = new QComboBox(m_autoConnectServerRow);
+            m_autoConnectServerCombo = makeComboBox(m_autoConnectServerRow);
             m_autoConnectServerCombo->setMinimumWidth(SERVER_COMBO_MIN_WIDTH);
             populateAutoConnectServerCombo();
             connect(m_autoConnectServerCombo, &QComboBox::currentIndexChanged, this, [this](const int idx)
@@ -880,7 +893,7 @@ void SettingsPage::buildAppearanceTab(QTabWidget* tabs)
             auto [row, rl] = makeSettingRow(generalCard,
                                             tr("Theme"),
                                             tr("Choose the color scheme for the app."));
-            m_themeCombo = new QComboBox(row);
+            m_themeCombo = makeComboBox(row);
             m_themeCombo->addItem(tr("System Settings"), QStringLiteral("system"));
             m_themeCombo->addItem(tr("Dark"),            QStringLiteral("dark"));
             m_themeCombo->addItem(tr("Light"),           QStringLiteral("light"));
@@ -913,7 +926,7 @@ void SettingsPage::buildAppearanceTab(QTabWidget* tabs)
         {
             auto [row, rl] = makeSettingRow(globeCard, tr("Animation"), globeDescription());
             m_globeDescLabel = row->findChild<QLabel*>(QStringLiteral("settingsDesc"));
-            m_globeCombo = new QComboBox(row);
+            m_globeCombo = makeComboBox(row);
             populateGlobeCombo();
             connect(m_globeCombo, &QComboBox::currentIndexChanged, this, [this](int)
             {
