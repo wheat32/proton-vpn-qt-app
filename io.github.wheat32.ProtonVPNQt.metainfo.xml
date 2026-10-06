@@ -3,6 +3,9 @@
   <id>io.github.wheat32.ProtonVPNQt</id>
   <name>Proton VPN</name>
   <summary>Qt GUI frontend for the ProtonVPN CLI</summary>
+  <categories>
+    <category>Network</category>
+  </categories>
   <description>
     <p>
       A lightweight Qt-based graphical interface for the ProtonVPN command-line
@@ -15,6 +18,8 @@
       separately.
     </p>
   </description>
+
+  <icon type="stock">io.github.wheat32.ProtonVPNQt</icon>
 
   <url type="homepage">https://github.com/wheat32/proton-vpn-qt-app</url>
   <url type="bugtracker">https://github.com/wheat32/proton-vpn-qt-app/issues</url>
@@ -53,7 +58,7 @@
   </screenshots>
 
   <releases>
-    <release version="1.9.0" date="2026-05-27">
+    <release version="1.12.1" date="2026-10-06">
       <description>
         <p>Latest release.</p>
       </description>
