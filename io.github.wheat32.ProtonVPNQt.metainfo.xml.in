@@ -58,7 +58,7 @@
   </screenshots>
 
   <releases>
-    <release version="1.12.1" date="2026-10-06">
+    <release version="@APP_VERSION@" date="@APP_RELEASE_DATE@">
       <description>
         <p>Latest release.</p>
       </description>

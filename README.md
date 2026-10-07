@@ -12,12 +12,17 @@ A Qt GUI front-end for the [Proton VPN Linux CLI](https://protonvpn.com/support/
 
 ### General
 - One-click **connect / disconnect** with a large power button and system tray controls
-- Automatic connection detection on launch using `protonvpn status`, with active server and public IP display
+- Detects an existing connection on launch using `protonvpn status` and shows the server you're connected to, plus your new IP address after connecting from the app
 - **Background polling** every 15 seconds: detects external state changes (CLI disconnect, reconnect, or location switch) and updates the UI without any user action
-- Secure login with **interactive 2FA support** and inline validation
+- Sign in with your password plus an **authenticator code or a security key** (U2F/FIDO2)
+- **Animated globe** behind the power button that turns to face the country you connect to
+- **Split view** for wide windows: from 1200 px wide, the Countries list appears beside the main page
+- Proton-inspired **dark and light themes**, or follow your desktop's light/dark setting live
 - Confirmation dialog when quitting while the VPN is active: leave it running or disconnect cleanly
 - Single-instance protection to prevent duplicate launches
-- Proton-inspired dark theme with KDE Breeze (when available) or Fusion styling
+- Checks for new versions on startup and shows what's new after an update
+- Optional **log files** for troubleshooting
+- A **D-Bus status interface** for scripts and widgets (see [D-Bus Interface](#d-bus-interface))
 - Informational banners for CLI version mismatches and pre-release builds
 
 ### Free & Plus Plan Awareness
@@ -25,19 +30,27 @@ A Qt GUI front-end for the [Proton VPN Linux CLI](https://protonvpn.com/support/
 - **Account page** shows plan type (Free / VPN Plus) with a direct upgrade link for Free users
 - **Countries page**: the Connect button is locked with a tooltip for Free users, since Proton picks the server automatically
 - **VPN page**: location picker is disabled for Free users (forbidden cursor + tooltip); recent connections picker is hidden
-- **Settings page**: Plus-only features (NAT Type, VPN Accelerator, NetShield, Port Forwarding, Custom DNS, Recent Connections) are grouped under a `✦ Available to Plus Members` divider and rendered at reduced opacity for Free users
+- **Settings page**: Plus-only features (NAT Type, VPN Accelerator, NetShield, Port Forwarding, Custom DNS, Recent Connections, Favorites) are grouped under a `✦ Available to Plus Members` divider and rendered at reduced opacity for Free users
 
 ### Location & Country Selection *(Plus)*
 - Browse and search countries and cities with feature tags (P2P, Tor, Secure Core, etc.)
-- **Country flags** in the countries list, detected from system locale/timezone
+- **Country flags** throughout; your own country, detected from your system's time zone or locale, is selected by default on the Countries page in wider windows
 - **Location picker** on the main VPN page: choose the fastest server or a specific city, with country flag and feature icons
 - **Recent connections** picker: quick access to previously used locations, with configurable history depth
+- **Favorites**: save locations and pick them from a Favorites dropdown on the main page
 
 ### Settings
 **App tab**
-- Launch on Startup via XDG autostart, with optional Auto-connect
-- Desktop Notifications for connect/disconnect events
-- *(Plus)* Recent Connections count (0–20) and one-click history clear
+- **Launch on Startup** via XDG autostart, with optional **Auto-connect** (to the fastest server or one you choose) and **Start Hidden**
+- **Close to Tray**
+- **Desktop Notifications** for connect/disconnect events, and **Check for Updates on Startup**
+- *(Plus)* **Recent Connections** count (0–20) and **Favorites**, each with a one-click clear
+- **Write Logs to File**
+
+**Appearance tab**
+- **Theme**: System Settings, Dark, or Light
+- **Globe Animation** (Auto, On, or Off; Auto follows your desktop's reduce-motion setting) and **Pause When Unfocused**
+- Show or hide the **Selected Location** and **Favorites** dropdowns on the main page
 
 **VPN tab**
 - Anonymous Crash Reports, IPv6, Kill Switch: available on all plans
@@ -55,7 +68,7 @@ When Port Forwarding is enabled in Settings and you are connected to a P2P serve
   - **Fedora:** `sudo dnf install libnatpmp`
   - **Arch:** `sudo pacman -S libnatpmp`
 
-`natpmpc` is an **optional** dependency; users who do not use port forwarding are unaffected by its absence.
+The Flatpak includes `natpmpc`, so there's nothing to install there. `natpmpc` is an **optional** dependency; users who do not use port forwarding are unaffected by its absence.
 
 ---
 
@@ -98,16 +111,28 @@ When Port Forwarding is enabled in Settings and you are connected to a P2P serve
 
 ---
 
+## Installation
+
+- **Arch Linux:** install [`proton-vpn-qt-app`](https://aur.archlinux.org/packages/proton-vpn-qt-app) from the AUR.
+- **Any distro:** download an AppImage, a Flatpak bundle, or the plain binary from the [latest release](../../releases/latest). The release notes list every file; in short:
+  - The **Standalone AppImage** includes the Proton VPN CLI, so there's nothing else to install. A *compat* build is available for older x86_64 CPUs without AVX2.
+  - The **Lite AppImage**, the **Flatpak bundle**, and the **binary** (`.tar.gz`) need the Proton VPN CLI installed on your system.
+  - Everything is available for x86_64 and ARM64 (aarch64), except the compat AppImage and the binary, which are x86_64 only.
+
+---
+
 ## Requirements
 
 | Dependency | Purpose |
 |---|---|
-| `protonvpn` CLI | Core VPN control: sign in, connect, disconnect, status, country/city lists, settings |
-| Qt 6 (Core, Gui, Widgets, Svg, SvgWidgets) | UI framework |
-| `curl` | **Optional**: fetches your public IP address when already connected on launch |
+| `protonvpn` CLI | Core VPN control: sign in, connect, disconnect, status, country/city lists, settings (the Standalone AppImage includes it) |
+| Qt 6.7 or newer (Core, Gui, Widgets, Network, DBus, Svg, SvgWidgets) | UI framework |
+| `natpmpc` (libnatpmp) | **Optional**: port forwarding (the Flatpak includes it) |
+| `nmcli` (NetworkManager) | **Optional**: lets Auto-connect at login wait for the network to come up |
+| `xdg-open` (xdg-utils) | **Optional**: opens the releases page from the update prompt |
 | XDG autostart (`~/.config/autostart/`) | **Optional**: required for the "Launch on Startup" feature; supported by all major desktop environments |
 
-The app communicates exclusively with the `protonvpn` CLI. `curl` degrades gracefully if absent.
+All VPN control goes through the `protonvpn` CLI; the app has no VPN or network logic of its own. The only network request it makes itself is the optional update check, which reads the latest version number from this repository.
 
 > [!WARNING]
 > **The official Proton VPN GTK app is not supported alongside this app and will cause problems.** Both apps will conflict over connection state and session management. The CLI will produce errors when two front-ends are running at the same time. If you have the GTK app installed, it is advised that you uninstall it before using this app.
@@ -119,11 +144,11 @@ The app communicates exclusively with the `protonvpn` CLI. `curl` degrades grace
 ```bash
 git clone https://github.com/wheat32/proton-vpn-qt-app.git
 cd proton-vpn-qt-app/src
-cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel
 ```
 
-The resulting binary is `build/proton_vpn_qt`.
+The resulting binary is `build/proton_vpn_qt`. Building needs CMake 3.21 or newer, a C++23 compiler, and Qt 6.7 or newer.
 
 ### Dependencies: Arch Linux
 
@@ -132,6 +157,8 @@ sudo pacman -S qt6-base qt6-svg cmake ninja
 ```
 
 ### Dependencies: Ubuntu / Debian
+
+These need a release whose Qt is 6.7 or newer; Ubuntu 24.04's Qt 6.4 is too old.
 
 ```bash
 sudo apt install qt6-base-dev qt6-svg-dev libqt6svg6-dev cmake ninja-build
@@ -146,20 +173,6 @@ sudo apt install qt6-base-dev qt6-svg-dev libqt6svg6-dev cmake ninja-build
 ```
 
 The app requires the `protonvpn` CLI to be installed and accessible in your `PATH`. See the [Proton VPN Linux documentation](https://protonvpn.com/support/linux-vpn-tool/) for installation instructions.
-
----
-
-## CI / Releases
-
-- **Pull requests** to `main` automatically trigger a build via GitHub Actions to verify the code compiles.
-- **Pushes to `main`** automatically build a release binary and publish a [GitHub Release](../../releases) tagged with the version from `src/version.json` (e.g. `v1.1.0`).
-
-The release archive (`proton-vpn-qt-app-linux-x86_64.tar.gz`) contains the single `proton_vpn_qt` binary:
-
-```bash
-tar -xzf proton-vpn-qt-app-linux-x86_64.tar.gz
-./proton_vpn_qt
-```
 
 ---
 
@@ -221,6 +234,7 @@ gdbus introspect --session \
 - Built with [Qt 6](https://www.qt.io/)
 - Uses the [ProtonVPN Linux CLI](https://protonvpn.com/support/linux-vpn-tool/)
 - Country flags from [Flag Icons](https://flagicons.lipis.dev/) (MIT License)
+- Globe land map and country positions made with [Natural Earth](https://www.naturalearthdata.com/) (public domain)
 
 ---
 
@@ -232,4 +246,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-GPLv3
+[GPLv3](LICENSE)

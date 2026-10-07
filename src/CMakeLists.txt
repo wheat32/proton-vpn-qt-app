@@ -168,7 +168,33 @@ install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../proton-vpn-sign.svg
         RENAME io.github.wheat32.ProtonVPNQt.svg
 )
 
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../io.github.wheat32.ProtonVPNQt.metainfo.xml
+# The metainfo is generated so its release always matches version.json. The
+# release date is the date of the commit being built: releases are tagged on the
+# commit pushed to main, so for a release it's the day it was published. Without
+# git (e.g. a source archive), it falls back to the build date.
+file(READ ${CMAKE_CURRENT_SOURCE_DIR}/version.json VERSION_JSON)
+string(JSON APP_VERSION GET "${VERSION_JSON}" app_version)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS version.json)
+
+find_package(Git QUIET)
+if(GIT_FOUND)
+    execute_process(COMMAND ${GIT_EXECUTABLE} log -1 --format=%cd --date=short
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            OUTPUT_VARIABLE APP_RELEASE_DATE
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+    )
+endif()
+if("${APP_RELEASE_DATE}" STREQUAL "")
+    string(TIMESTAMP APP_RELEASE_DATE "%Y-%m-%d" UTC)
+endif()
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/../io.github.wheat32.ProtonVPNQt.metainfo.xml.in
+        ${CMAKE_CURRENT_BINARY_DIR}/io.github.wheat32.ProtonVPNQt.metainfo.xml
+        @ONLY
+)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/io.github.wheat32.ProtonVPNQt.metainfo.xml
         DESTINATION share/metainfo
 )
 
