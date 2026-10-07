@@ -78,13 +78,22 @@ private:
 #endif
 
     // Split view: in a wide enough window the Countries page is shown beside
-    // the VPN page instead of on its own page (see applySplitView()). Each
-    // lives in a host widget so the stack indices never shift when it moves.
+    // the VPN page, and on its own page only while opened from the nav (see
+    // placeCountriesPage()). Each lives in a host widget so the stack indices
+    // never shift when it moves.
     GripSplitter* m_homeSplitter = nullptr; // stack slot for Page::Vpn
     QWidget*   m_countriesHost  = nullptr; // stack slot for Page::Countries
     QTimer*    m_splitSaveTimer = nullptr; // saves the divider position after a drag
     bool       m_splitView      = false;
+    // Turns the split view on or off for the window's width and the Show
+    // Countries setting.
+    void updateSplitView();
     void applySplitView(bool split);
+    // Keeps the Countries list in the split view to its share of the width.
+    void limitCountriesWidth();
+    // Moves the Countries page into the split view or back to its own stack
+    // slot, for the split view and the page shown.
+    void placeCountriesPage();
     // Places the split view divider at the saved Countries share of the width.
     void applySplitRatio();
 
@@ -121,5 +130,9 @@ private:
 #ifdef QT_DEBUG
     Page m_preDebugPage = Page::Login; // page to return to when leaving Debug
     bool m_signinPreview = false;      // the login page shows a Debug page preview
+    // The connection state as VpnManager last reported it, which the Debug
+    // page's Hide Error puts back on the VPN page.
+    VpnState m_lastReportedState = VpnState::Unknown;
+    QString  m_lastReportedInfo;
 #endif
 };

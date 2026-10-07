@@ -10,7 +10,15 @@
 #include "../themeManager.h"
 #include "../uiHelpers.h"
 #include "../cli/platformUtils.h"
+#include "../quickSettingIds.h"
+#include "../dialogs/natpmpcDialog.h"
+#include "../dialogs/reconnectDialog.h"
+#include "../widgets/cliSettingControls.h"
+#include "../widgets/globeAnimationCombo.h"
 #include "../widgets/numberSpinner.h"
+#include "../widgets/plusDivider.h"
+#include "../widgets/quickSettingsMenu.h"
+#include "../widgets/styledComboBox.h"
 #include "../widgets/toastNotification.h"
 #include "../widgets/toggleWithStatus.h"
 
@@ -18,10 +26,8 @@
 #include <QButtonGroup>
 #include <QClipboard>
 #include <QDebug>
-#include <QDialogButtonBox>
 #include <QDir>
 #include <QSignalBlocker>
-#include <QFontDatabase>
 #include <QFrame>
 #include <QGraphicsOpacityEffect>
 #include <QGridLayout>
@@ -34,36 +40,19 @@
 #include <QScrollArea>
 #include <QSpinBox>
 #include <QStandardPaths>
-#include <QStyle>
-#include <QStyledItemDelegate>
 #include <QSystemTrayIcon>
 #include <QTextBrowser>
 #include <QVersionNumber>
 #include <QVBoxLayout>
-#include <algorithm>
-#include <memory>
 #include <optional>
 #include <tuple>
 
 namespace
 {
-// makePlusDivider
-constexpr int PLUS_DIVIDER_H_MARGIN         = 16;
-constexpr int PLUS_DIVIDER_V_MARGIN         = 10;
-constexpr int PLUS_DIVIDER_SPACING          = 10;
-
 // makeTextCol
 constexpr int TEXT_COL_SPACING              = 2;
 constexpr int DESC_FONT_MIN_SIZE            = 7;
 constexpr int DESC_FONT_REDUCTION           = 1;
-
-// showReconnectDialog
-constexpr int RECONNECT_DLG_MIN_WIDTH       = 440;
-constexpr int RECONNECT_DLG_SPACING         = 16;
-constexpr int RECONNECT_DLG_H_MARGIN        = 24;
-constexpr int RECONNECT_DLG_V_MARGIN        = 24;
-constexpr int RECONNECT_DLG_BOT_MARGIN      = 20;
-constexpr int RECONNECT_BTN_SPACING         = 8;
 
 // makeToggleRow / makeComboRow
 constexpr int SETTING_ROW_H_MARGIN          = 16;
@@ -96,18 +85,6 @@ constexpr int KS_OPTION_H_SPACING          = 10;
 constexpr int KS_SUBPANEL_H_MARGIN          = 16;
 constexpr int KS_SUBPANEL_BOT_MARGIN        = 12;
 constexpr int KS_TEXT_COL_SPACING           = 2;
-
-// natpmpc dialog
-constexpr int NATPMPC_DLG_MIN_WIDTH         = 480;
-constexpr int NATPMPC_DLG_SPACING           = 12;
-constexpr int NATPMPC_DLG_MARGIN            = 20;
-constexpr int NATPMPC_DLG_BOT_MARGIN        = 16;
-constexpr int NATPMPC_ICON_SIZE             = 32;
-constexpr int NATPMPC_ICON_SPACING          = 8;
-constexpr int NATPMPC_CMD_SPACING           = 4;
-constexpr int NATPMPC_COPY_BTN_SIZE         = 28;
-constexpr int NATPMPC_COPY_ICON_SIZE        = 16;
-constexpr int NATPMPC_BOTTOM_SPACING        = 4;
 
 // port forwarding row
 constexpr int PORT_ROW_H_MARGIN             = 16;
@@ -192,46 +169,6 @@ void SettingsPage::addDivider(QVBoxLayout* layout, QWidget* parent)
     layout->addWidget(div);
 }
 
-QComboBox* SettingsPage::makeComboBox(QWidget* parent)
-{
-    QComboBox* combo = new QComboBox(parent);
-    // Breeze replaces a combo box's default item delegate with its own, which
-    // draws the popup items itself and ignores the stylesheet, and Fusion (the
-    // AppImage's style) draws them differently again. Breeze leaves a
-    // QStyledItemDelegate alone, and it draws items with the stylesheet's
-    // "QComboBox QAbstractItemView::item" rules under every style.
-    combo->setItemDelegate(new QStyledItemDelegate(combo));
-    return combo;
-}
-
-QWidget* SettingsPage::makePlusDivider(QWidget* parent)
-{
-    QWidget* container = new QWidget(parent);
-    QHBoxLayout* hl = new QHBoxLayout(container);
-    hl->setContentsMargins(PLUS_DIVIDER_H_MARGIN, PLUS_DIVIDER_V_MARGIN,
-                           PLUS_DIVIDER_H_MARGIN, PLUS_DIVIDER_V_MARGIN);
-    hl->setSpacing(PLUS_DIVIDER_SPACING);
-
-    auto makeHLine = [&]() -> QFrame*
-    {
-        QFrame* line = new QFrame(container);
-        line->setFrameShape(QFrame::HLine);
-        line->setObjectName(QStringLiteral("plusDividerLine"));
-        return line;
-    };
-
-    hl->addWidget(makeHLine(), 1);
-
-    QLabel* label = new QLabel(tr("✦  Available to Plus Members"), container);
-    label->setObjectName(QStringLiteral("plusDividerLabel"));
-    label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
-    hl->addWidget(label);
-
-    hl->addWidget(makeHLine(), 1);
-
-    return container;
-}
-
 void SettingsPage::maybeWarnReconnect(const QString& cliOutput)
 {
     // The CLI emits phrases like "please establish a new VPN connection for
@@ -253,62 +190,34 @@ void SettingsPage::maybeWarnReconnect(const QString& cliOutput)
 }
 
 void SettingsPage::showReconnectDialog(const QString& settingLabel,
-                                       std::function<void()> onAccept)
+                                       const std::function<void()>& onAccept)
 {
-    QDialog* dlg = new QDialog(this);
-    dlg->setAttribute(Qt::WA_DeleteOnClose);
-    dlg->setWindowTitle(tr("Reconnect Required"));
-    dlg->setModal(true);
-    dlg->setMinimumWidth(RECONNECT_DLG_MIN_WIDTH);
-
-    QVBoxLayout* layout = new QVBoxLayout(dlg);
-    layout->setSpacing(RECONNECT_DLG_SPACING);
-    layout->setContentsMargins(RECONNECT_DLG_H_MARGIN, RECONNECT_DLG_V_MARGIN,
-                               RECONNECT_DLG_H_MARGIN, RECONNECT_DLG_BOT_MARGIN);
-
-    QLabel* heading = new QLabel(
-        QStringLiteral("<b>%1</b>")
-            .arg(tr("%1: Reconnect Required").arg(settingLabel).toHtmlEscaped()),
-        dlg);
-    heading->setTextFormat(Qt::RichText);
-
-    QLabel* body = new QLabel(
-        tr("Changing this setting requires reconnecting to the VPN.\n\n"
-           "You can disconnect, apply the change, and reconnect to the same "
-           "location automatically, or dismiss this dialog and do it manually."),
-        dlg);
-    body->setWordWrap(true);
-
-    layout->addWidget(heading);
-    layout->addWidget(body);
-
-    QHBoxLayout* btnRow = new QHBoxLayout();
-    btnRow->setSpacing(RECONNECT_BTN_SPACING);
-
-    QPushButton* dismissBtn = new QPushButton(tr("Dismiss"), dlg);
-    dismissBtn->setObjectName(QStringLiteral("secondaryButton"));
-    connect(dismissBtn, &QPushButton::clicked, dlg, &QDialog::reject);
-
-    QPushButton* reconnectBtn = new QPushButton(tr("Apply && Reconnect"), dlg);
-    reconnectBtn->setObjectName(QStringLiteral("primaryButton"));
-    reconnectBtn->setDefault(true);
-
-    const int btnH = reconnectBtn->sizeHint().height();
-    dismissBtn->setFixedHeight(btnH);
-    reconnectBtn->setFixedHeight(btnH);
-
-    connect(reconnectBtn, &QPushButton::clicked, dlg,
-            [dlg, onAccept = std::move(onAccept)]()
+    if (ReconnectDialog::confirm(settingLabel, this) == true)
     {
-        dlg->accept();
         onAccept();
+    }
+}
+
+void SettingsPage::addQuickSetting(const QuickSettingSource& source)
+{
+    m_quickSettingSources.append(source);
+
+    // Right-clicking anywhere on the row brings up the menu, its labels
+    // included: they would otherwise offer to copy their text and links.
+    source.row->setContextMenuPolicy(Qt::CustomContextMenu);
+    const QList<QLabel*> labels = source.row->findChildren<QLabel*>();
+    for (QLabel* label : labels)
+    {
+        label->setContextMenuPolicy(Qt::NoContextMenu);
+    }
+    connect(source.row, &QWidget::customContextMenuRequested, this,
+            [this, id = source.id, row = source.row](const QPoint& pos)
+    {
+        if (QuickSettingsMenu::exec(id, row->mapToGlobal(pos), this) == true)
+        {
+            emit quickSettingsChanged();
+        }
     });
-
-    btnRow->addWidget(dismissBtn, 1);
-    btnRow->addWidget(reconnectBtn, 1);
-    layout->addLayout(btnRow);
-
-    dlg->exec();
 }
 
 QWidget* SettingsPage::makeToggleRow(QWidget* parent, const QString& label,
@@ -318,31 +227,7 @@ QWidget* SettingsPage::makeToggleRow(QWidget* parent, const QString& label,
     auto [row, rl] = makeSettingRow(parent, label, desc);
     ToggleWithStatus* toggle = new ToggleWithStatus(row);
     rl->addWidget(toggle, 0);
-
-    connect(toggle, &ToggleWithStatus::toggled, this,
-            [this, cliKey, onValue, label, toggle, requiresReconnect](const bool on)
-    {
-        if (requiresReconnect == true && m_manager->currentState() != VpnState::Disconnected)
-        {
-            toggle->blockSignals(true);
-            toggle->setOn(on == false, false);
-            toggle->blockSignals(false);
-
-            const QString newValue = on == true ? onValue : QStringLiteral("off");
-            showReconnectDialog(label, [this, toggle, on, cliKey, newValue]()
-            {
-                toggle->blockSignals(true);
-                toggle->setOn(on, true);
-                toggle->blockSignals(false);
-                m_sequencePending = true;
-                m_manager->applyConfigValueAndReconnect(cliKey, newValue);
-            });
-            return;
-        }
-        m_manager->applyConfigValue(cliKey, on == true ? onValue : QStringLiteral("off"));
-    });
-
-    m_toggleRows.append({.cliKey = cliKey, .toggle = toggle, .onValue = onValue});
+    m_cliControls->addToggle(toggle, label, cliKey, onValue, requiresReconnect);
     return row;
 }
 
@@ -352,48 +237,11 @@ QWidget* SettingsPage::makeComboRow(QWidget* parent, const QString& label,
                                     const bool requiresReconnect)
 {
     auto [row, rl] = makeSettingRow(parent, label, desc);
-    QComboBox* combo = makeComboBox(row);
-    for (const auto& l : labels)
-    {
-        combo->addItem(l);
-    }
+    StyledComboBox* combo = new StyledComboBox(row);
+    combo->addItems(labels);
     combo->setMinimumWidth(COMBO_MIN_WIDTH);
     rl->addWidget(combo, 0);
-
-    auto prevIdx = std::make_shared<int>(combo->currentIndex());
-
-    connect(combo, &QComboBox::currentIndexChanged,
-            this, [this, cliKey, cliValues, combo, label, requiresReconnect, prevIdx](const int idx)
-            {
-                const int oldIdx = *prevIdx;
-                *prevIdx = idx;
-                if (idx < 0 || idx >= cliValues.size()) return;
-
-                if (requiresReconnect == true && m_manager->currentState() != VpnState::Disconnected)
-                {
-                    combo->blockSignals(true);
-                    combo->setCurrentIndex(oldIdx);
-                    combo->blockSignals(false);
-                    *prevIdx = oldIdx;
-
-                    const QString& newValue = cliValues[idx];
-                    showReconnectDialog(label,
-                        [this, combo, idx, cliKey, newValue, prevIdx]()
-                        {
-                            combo->blockSignals(true);
-                            combo->setCurrentIndex(idx);
-                            combo->blockSignals(false);
-                            *prevIdx = idx;
-                            m_sequencePending = true;
-                            m_manager->applyConfigValueAndReconnect(cliKey, newValue);
-                        });
-                    return;
-                }
-
-                m_manager->applyConfigValue(cliKey, cliValues[idx]);
-            });
-
-    m_comboRows.append({.cliKey = cliKey, .combo = combo, .cliValues = cliValues});
+    m_cliControls->addCombo(combo, label, cliKey, cliValues, requiresReconnect);
     return row;
 }
 
@@ -487,6 +335,8 @@ void SettingsPage::buildAppTab(QTabWidget* tabs)
     tabs->addTab(appTab, tr("App"));
 
     {
+        using Section = QuickSettingSource::Section;
+        using Kind = QuickSettingSource::Kind;
         auto [appContent, appContentLayout] = makeSectionedTab(appTab);
 
         auto addHeader = [&](const QString& title)
@@ -539,6 +389,8 @@ void SettingsPage::buildAppTab(QTabWidget* tabs)
             });
             rl->addWidget(m_autoStartToggle);
             addStartup(m_autoStartRow);
+            addQuickSetting({.id = QuickSettingIds::LAUNCH_ON_STARTUP, .label = tr("Launch on Startup"),
+                             .section = Section::App, .row = m_autoStartRow, .control = m_autoStartToggle});
 
             // Sub-row: indented auto-connect (no divider – belongs to the row above)
             m_autoConnectRow = new QWidget(startupCard);
@@ -557,6 +409,8 @@ void SettingsPage::buildAppTab(QTabWidget* tabs)
             });
             acRl->addWidget(m_autoConnectToggle);
             startupLayout->addWidget(m_autoConnectRow); // direct add – no divider above it
+            addQuickSetting({.id = QuickSettingIds::AUTO_CONNECT, .label = tr("Auto-connect on Startup"),
+                             .section = Section::App, .row = m_autoConnectRow, .control = m_autoConnectToggle});
             updateAutoConnectRowVisibility();
 
             // Sub-sub-row: indented server dropdown (no divider – belongs to auto-connect)
@@ -568,7 +422,7 @@ void SettingsPage::buildAppTab(QTabWidget* tabs)
             srvRl->addWidget(makeTextCol(m_autoConnectServerRow,
                                          tr("Server"),
                                          tr("Choose which server to connect to on startup.")), 1);
-            m_autoConnectServerCombo = makeComboBox(m_autoConnectServerRow);
+            m_autoConnectServerCombo = new StyledComboBox(m_autoConnectServerRow);
             m_autoConnectServerCombo->setMinimumWidth(SERVER_COMBO_MIN_WIDTH);
             populateAutoConnectServerCombo();
             connect(m_autoConnectServerCombo, &QComboBox::currentIndexChanged, this, [this](const int idx)
@@ -589,6 +443,9 @@ void SettingsPage::buildAppTab(QTabWidget* tabs)
             });
             srvRl->addWidget(m_autoConnectServerCombo);
             startupLayout->addWidget(m_autoConnectServerRow); // direct add – no divider above it
+            addQuickSetting({.id = QuickSettingIds::AUTO_CONNECT_SERVER, .label = tr("Auto-connect Server"),
+                             .section = Section::App, .kind = Kind::Combo, .row = m_autoConnectServerRow,
+                             .control = m_autoConnectServerCombo});
             updateAutoConnectServerRow();
         }
 
@@ -606,6 +463,8 @@ void SettingsPage::buildAppTab(QTabWidget* tabs)
             });
             rl->addWidget(toggle);
             addStartup(row);
+            addQuickSetting({.id = QuickSettingIds::START_HIDDEN, .label = tr("Start Hidden"),
+                             .section = Section::App, .row = row, .control = toggle});
         }
 
         //  Section: Window
@@ -636,6 +495,8 @@ void SettingsPage::buildAppTab(QTabWidget* tabs)
             }
 
             windowLayout->addWidget(row);
+            addQuickSetting({.id = QuickSettingIds::CLOSE_TO_TRAY, .label = tr("Close to Tray"),
+                             .section = Section::App, .row = row, .control = closeToTrayToggle});
         }
 
         //  Section: Notifications
@@ -656,6 +517,8 @@ void SettingsPage::buildAppTab(QTabWidget* tabs)
             });
             rl->addWidget(m_notificationsToggle);
             notifLayout->addWidget(row);
+            addQuickSetting({.id = QuickSettingIds::NOTIFICATIONS, .label = tr("Desktop Notifications"),
+                             .section = Section::App, .row = row, .control = m_notificationsToggle});
         }
 
         {
@@ -672,10 +535,12 @@ void SettingsPage::buildAppTab(QTabWidget* tabs)
             });
             rl->addWidget(updateToggle);
             notifLayout->addWidget(row);
+            addQuickSetting({.id = QuickSettingIds::CHECK_FOR_UPDATES, .label = tr("Check for Updates"),
+                             .section = Section::App, .row = row, .control = updateToggle});
         }
 
         //  Plus Members Only divider
-        m_appPlusDivider = makePlusDivider(appContent);
+        m_appPlusDivider = new PlusDivider(appContent);
         appContentLayout->addWidget(m_appPlusDivider);
 
         //  Plus-only section container
@@ -717,6 +582,9 @@ void SettingsPage::buildAppTab(QTabWidget* tabs)
             });
             rl->addWidget(m_recentConnectionsSpinBox);
             addHist(row);
+            addQuickSetting({.id = QuickSettingIds::RECENT_CONNECTIONS, .label = tr("Recent Connections"),
+                             .section = Section::App, .kind = Kind::Number, .row = row,
+                             .control = m_recentConnectionsSpinBox, .plusOnly = true});
         }
 
         // Clear Recent Connections
@@ -745,6 +613,9 @@ void SettingsPage::buildAppTab(QTabWidget* tabs)
             rl->addWidget(clearBtn);
             cLayout->addWidget(inner);
             histLayout->addWidget(m_clearRecentRow);
+            addQuickSetting({.id = QuickSettingIds::CLEAR_RECENT_CONNECTIONS, .label = tr("Clear Recent Connections"),
+                             .section = Section::App, .kind = Kind::Button, .row = m_clearRecentRow,
+                             .control = clearBtn, .plusOnly = true});
             m_clearRecentRow->setVisible(ConnectionHistory::instance().hasAnyEntries());
             connect(&ConnectionHistory::instance(), &ConnectionHistory::changed, this, [this]()
             {
@@ -789,6 +660,8 @@ void SettingsPage::buildAppTab(QTabWidget* tabs)
             });
             rl->addWidget(toggle);
             addFav(row);
+            addQuickSetting({.id = QuickSettingIds::ENABLE_FAVORITES, .label = tr("Enable Favorites"),
+                             .section = Section::App, .row = row, .control = toggle, .plusOnly = true});
         }
 
         // Clear Favorites
@@ -817,6 +690,9 @@ void SettingsPage::buildAppTab(QTabWidget* tabs)
             rl->addWidget(clearBtn);
             cLayout->addWidget(inner);
             favLayout->addWidget(m_clearFavoritesRow);
+            addQuickSetting({.id = QuickSettingIds::CLEAR_FAVORITES, .label = tr("Clear Favorites"),
+                             .section = Section::App, .kind = Kind::Button, .row = m_clearFavoritesRow,
+                             .control = clearBtn, .plusOnly = true});
             m_clearFavoritesRow->setVisible(FavoritesManager::instance().hasAnyEntries());
             connect(&FavoritesManager::instance(), &FavoritesManager::changed, this, [this]()
             {
@@ -842,6 +718,8 @@ void SettingsPage::buildAppTab(QTabWidget* tabs)
             });
             rl->addWidget(logToFileToggle);
             loggingLayout->addWidget(row);
+            addQuickSetting({.id = QuickSettingIds::LOG_TO_FILE, .label = tr("Write Logs to File"),
+                             .section = Section::App, .row = row, .control = logToFileToggle});
         }
 
         //  Section: About
@@ -880,6 +758,8 @@ void SettingsPage::buildAppearanceTab(QTabWidget* tabs)
     // TAB 2 – Appearance
     // ============================================================
     {
+        using Section = QuickSettingSource::Section;
+        using Kind = QuickSettingSource::Kind;
         QWidget* appearanceTab = new QWidget();
         auto [appearanceContent, appearanceContentLayout] = makeSectionedTab(appearanceTab);
         tabs->addTab(appearanceTab, tr("Appearance"));
@@ -893,7 +773,7 @@ void SettingsPage::buildAppearanceTab(QTabWidget* tabs)
             auto [row, rl] = makeSettingRow(generalCard,
                                             tr("Theme"),
                                             tr("Choose the color scheme for the app."));
-            m_themeCombo = makeComboBox(row);
+            m_themeCombo = new StyledComboBox(row);
             m_themeCombo->addItem(tr("System Settings"), QStringLiteral("system"));
             m_themeCombo->addItem(tr("Dark"),            QStringLiteral("dark"));
             m_themeCombo->addItem(tr("Light"),           QStringLiteral("light"));
@@ -916,6 +796,9 @@ void SettingsPage::buildAppearanceTab(QTabWidget* tabs)
 
             rl->addWidget(m_themeCombo);
             generalLayout->addWidget(row);
+            addQuickSetting({.id = QuickSettingIds::THEME, .label = tr("Theme"),
+                             .section = Section::Appearance, .kind = Kind::Combo, .row = row,
+                             .control = m_themeCombo});
         }
 
         //  Section: Globe
@@ -925,23 +808,25 @@ void SettingsPage::buildAppearanceTab(QTabWidget* tabs)
         //  Globe Animation
         {
             auto [row, rl] = makeSettingRow(globeCard, tr("Animation"), globeDescription());
-            m_globeDescLabel = row->findChild<QLabel*>(QStringLiteral("settingsDesc"));
-            m_globeCombo = makeComboBox(row);
-            populateGlobeCombo();
-            connect(m_globeCombo, &QComboBox::currentIndexChanged, this, [this](int)
+            QLabel* descLabel = row->findChild<QLabel*>(QStringLiteral("settingsDesc"));
+            m_globeCombo = new GlobeAnimationCombo(row);
+            connect(m_globeCombo, &GlobeAnimationCombo::changed, this, [this]()
             {
-                const AppConfig::GlobeAnimation setting =
-                    AppConfig::globeAnimationFromName(m_globeCombo->currentData().toString());
-                AppConfig::instance().setGlobeAnimation(setting);
                 updateGlobePauseToggle();
                 emit globeSettingsChanged();
             });
-            // Detection is asynchronous: "Auto" appears once the desktop answers.
-            connect(&MotionPreference::instance(), &MotionPreference::changed,
-                    this, &SettingsPage::populateGlobeCombo);
+            // Auto is described only once the desktop's preference turns out
+            // to be readable, which is when the combo box starts listing it.
+            connect(&MotionPreference::instance(), &MotionPreference::changed, descLabel, [descLabel]()
+            {
+                descLabel->setText(globeDescription());
+            });
 
             rl->addWidget(m_globeCombo);
             globeLayout->addWidget(row);
+            addQuickSetting({.id = QuickSettingIds::GLOBE_ANIMATION, .label = tr("Globe Animation"),
+                             .section = Section::Appearance, .kind = Kind::Combo, .row = row,
+                             .control = m_globeCombo});
         }
 
         //  Pause Globe When Unfocused
@@ -961,6 +846,71 @@ void SettingsPage::buildAppearanceTab(QTabWidget* tabs)
             });
             rl->addWidget(m_globePauseToggle);
             globeLayout->addWidget(row);
+            addQuickSetting({.id = QuickSettingIds::GLOBE_PAUSE, .label = tr("Pause Globe When Unfocused"),
+                             .section = Section::Appearance, .row = row, .control = m_globePauseToggle});
+        }
+
+        //  Section: Main Page
+        addSectionHeader(appearanceContent, appearanceContentLayout, tr("Main Page"));
+        auto [mainPageCard, mainPageLayout] = addSectionCard(appearanceContent, appearanceContentLayout);
+
+        //  Show Countries
+        {
+            auto [row, rl] = makeSettingRow(mainPageCard,
+                                            tr("Show Countries"),
+                                            tr("Show the Countries list beside the main VPN page when the "
+                                               "window is wide enough."));
+            ToggleWithStatus* toggle = new ToggleWithStatus(row);
+            toggle->setOn(AppConfig::instance().showCountriesSidebar(), false);
+            connect(toggle, &ToggleWithStatus::toggled, this, [this](const bool on)
+            {
+                AppConfig::instance().setShowCountriesSidebar(on);
+                emit countriesSidebarVisibilityChanged(on);
+            });
+            rl->addWidget(toggle);
+            mainPageLayout->addWidget(row);
+            addQuickSetting({.id = QuickSettingIds::SHOW_COUNTRIES, .label = tr("Show Countries"),
+                             .section = Section::Appearance, .row = row, .control = toggle});
+        }
+
+        //  Show Quick Settings
+        {
+            addDivider(mainPageLayout, mainPageCard);
+            auto [row, rl] = makeSettingRow(mainPageCard,
+                                            tr("Show Quick Settings"),
+                                            tr("Show quick settings beside the main VPN page when the window "
+                                               "is wide enough. Right-click any setting to add it to them or "
+                                               "take it out, up to %1.").arg(AppConfig::QUICK_SETTINGS_MAX));
+            ToggleWithStatus* toggle = new ToggleWithStatus(row);
+            toggle->setOn(AppConfig::instance().showQuickSettings(), false);
+            connect(toggle, &ToggleWithStatus::toggled, this, [this](const bool on)
+            {
+                AppConfig::instance().setShowQuickSettings(on);
+                emit quickSettingsChanged();
+            });
+            rl->addWidget(toggle);
+            mainPageLayout->addWidget(row);
+            addQuickSetting({.id = QuickSettingIds::SHOW_QUICK_SETTINGS, .label = tr("Show Quick Settings"),
+                             .section = Section::Appearance, .row = row, .control = toggle});
+        }
+
+        //  Restore Default Quick Settings
+        {
+            addDivider(mainPageLayout, mainPageCard);
+            auto [row, rl] = makeSettingRow(mainPageCard,
+                                            tr("Default Quick Settings"),
+                                            tr("Put back the quick settings the app starts with."));
+            QPushButton* restoreBtn = new QPushButton(tr("Restore"), row);
+            restoreBtn->setObjectName(QStringLiteral("secondaryButton"));
+            restoreBtn->setCursor(Qt::PointingHandCursor);
+            connect(restoreBtn, &QPushButton::clicked, this, [this]()
+            {
+                AppConfig::instance().setQuickSettings(AppConfig::defaultQuickSettings());
+                emit quickSettingsChanged();
+                ToastNotification::popup(this, tr("Quick settings restored to their defaults."));
+            });
+            rl->addWidget(restoreBtn);
+            mainPageLayout->addWidget(row);
         }
 
         //  Section: Main Page Dropdowns
@@ -981,6 +931,8 @@ void SettingsPage::buildAppearanceTab(QTabWidget* tabs)
             });
             rl->addWidget(toggle);
             dropdownLayout->addWidget(row);
+            addQuickSetting({.id = QuickSettingIds::SHOW_LOCATION_PICKER, .label = tr("Show Selected Location"),
+                             .section = Section::Appearance, .row = row, .control = toggle});
         }
 
         //  Show Favorites Dropdown
@@ -1010,6 +962,8 @@ void SettingsPage::buildAppearanceTab(QTabWidget* tabs)
             }
 
             dropdownLayout->addWidget(row);
+            addQuickSetting({.id = QuickSettingIds::SHOW_FAVORITES_DROPDOWN, .label = tr("Show Favorites Dropdown"),
+                             .section = Section::Appearance, .row = row, .control = toggle});
         }
 
         appearanceContentLayout->addStretch();
@@ -1033,36 +987,6 @@ QString SettingsPage::globeDescription()
     }
     return tr("Show a slowly spinning globe behind the connect button that turns to face the "
               "country you connect to. Off removes it.");
-}
-
-void SettingsPage::populateGlobeCombo()
-{
-    if (m_globeDescLabel != nullptr)
-    {
-        m_globeDescLabel->setText(globeDescription());
-    }
-
-    // Rebuilding is not a user choice; nothing should be saved for it.
-    const QSignalBlocker blocker(m_globeCombo);
-    m_globeCombo->clear();
-
-    const bool autoAvailable = MotionPreference::instance().support() == MotionPreference::Support::Available;
-    if (autoAvailable == true)
-    {
-        m_globeCombo->addItem(tr("Auto"), AppConfig::globeAnimationName(AppConfig::GlobeAnimation::Auto));
-        m_globeCombo->setItemData(0, tr("Follows your desktop's reduce-motion setting."), Qt::ToolTipRole);
-    }
-    m_globeCombo->addItem(tr("On"),  AppConfig::globeAnimationName(AppConfig::GlobeAnimation::On));
-    m_globeCombo->addItem(tr("Off"), AppConfig::globeAnimationName(AppConfig::GlobeAnimation::Off));
-
-    // A saved "auto" shows as On when the desktop's preference cannot be
-    // read, since that is what it does then.
-    AppConfig::GlobeAnimation shown = AppConfig::instance().globeAnimation();
-    if (shown == AppConfig::GlobeAnimation::Auto && autoAvailable == false)
-    {
-        shown = AppConfig::GlobeAnimation::On;
-    }
-    m_globeCombo->setCurrentIndex(m_globeCombo->findData(AppConfig::globeAnimationName(shown)));
 }
 
 // VPN tab: everything applied through `protonvpn config set`.
@@ -1109,6 +1033,26 @@ void SettingsPage::buildVpnTab(QTabWidget* tabs)
 
     tabs->addTab(vpnTab, tr("VPN"));
 
+    m_cliControls = new CliSettingControls(m_manager, this);
+    connect(m_cliControls, &CliSettingControls::reconnectStarted, this, [this]()
+    {
+        m_sequencePending = true;
+    });
+
+    using Section = QuickSettingSource::Section;
+    using Kind = QuickSettingSource::Kind;
+    // Offers a row made by makeToggleRow() or makeComboRow() to the quick
+    // settings, and returns it.
+    auto offer = [this](QWidget* row, const QString& id, const QString& label, const Kind kind,
+                        const bool plusOnly) -> QWidget*
+    {
+        QWidget* control = kind == Kind::Combo ? static_cast<QWidget*>(row->findChild<QComboBox*>())
+                                               : static_cast<QWidget*>(row->findChild<ToggleWithStatus*>());
+        addQuickSetting({.id = id, .label = label, .section = Section::Vpn, .kind = kind, .row = row,
+                         .control = control, .plusOnly = plusOnly});
+        return row;
+    };
+
     bool vpnFirst = true;
     auto addVpn = [&](QWidget* w)
     {
@@ -1121,18 +1065,20 @@ void SettingsPage::buildVpnTab(QTabWidget* tabs)
     };
 
     //  Anonymous Crash Reports
-    addVpn(makeToggleRow(vpnCard,
-                         tr("Anonymous Crash Reports"),
-                         tr("Send anonymous crash reports to Proton for the VPN CLI tool - not this Qt app."),
-                         QStringLiteral("anonymous-crash-reports")));
+    addVpn(offer(makeToggleRow(vpnCard,
+                               tr("Anonymous Crash Reports"),
+                               tr("Send anonymous crash reports to Proton for the VPN CLI tool - not this Qt app."),
+                               QStringLiteral("anonymous-crash-reports")),
+                 QuickSettingIds::CRASH_REPORTS, tr("Crash Reports"), Kind::Toggle, false));
 
     //  IPv6
-    addVpn(makeToggleRow(vpnCard,
-                         tr("IPv6"),
-                         tr("Enable IPv6 support over the VPN tunnel."),
-                         QStringLiteral("ipv6"),
-                         QStringLiteral("on"),
-                         /*requiresReconnect=*/true));
+    addVpn(offer(makeToggleRow(vpnCard,
+                               tr("IPv6"),
+                               tr("Enable IPv6 support over the VPN tunnel."),
+                               QStringLiteral("ipv6"),
+                               QStringLiteral("on"),
+                               /*requiresReconnect=*/true),
+                 QuickSettingIds::IPV6, tr("IPv6"), Kind::Toggle, false));
 
     //  Kill Switch
     {
@@ -1252,11 +1198,13 @@ void SettingsPage::buildVpnTab(QTabWidget* tabs)
         });
 
         addVpn(ksContainer);
+        addQuickSetting({.id = QuickSettingIds::KILL_SWITCH, .label = tr("Kill Switch"),
+                         .section = Section::Vpn, .row = ksRow, .control = m_killSwitchToggle});
     }
 
     //  Plus Members Only divider
     addDivider(vpnCardLayout, vpnCard);
-    m_plusDivider = makePlusDivider(vpnCard);
+    m_plusDivider = new PlusDivider(vpnCard);
     vpnCardLayout->addWidget(m_plusDivider);
 
     m_plusSection = new QWidget(vpnCard);
@@ -1277,40 +1225,43 @@ void SettingsPage::buildVpnTab(QTabWidget* tabs)
     };
 
     //  NAT Type
-    addPlus(makeComboRow(m_plusSection,
-                         tr("NAT Type"),
-                         tr("Controls how the VPN server maps your connection. "
-                            "<b>Strict (Type 3)</b> is the default and best for privacy. "
-                            "<b>Moderate (Type 2)</b> improves compatibility for online gaming and WebRTC, "
-                            "at a slight privacy trade-off. "
-                            "<a href='https://protonvpn.com/support/moderate-nat'>Read more</a>"),
-                         QStringLiteral("moderate-nat"),
-                         {tr("Strict (Type 3)"),
-                          tr("Moderate (Type 2)")},
-                         {QStringLiteral("off"), QStringLiteral("on")},
-                         /*requiresReconnect=*/true));
+    addPlus(offer(makeComboRow(m_plusSection,
+                               tr("NAT Type"),
+                               tr("Controls how the VPN server maps your connection. "
+                                  "<b>Strict (Type 3)</b> is the default and best for privacy. "
+                                  "<b>Moderate (Type 2)</b> improves compatibility for online gaming and WebRTC, "
+                                  "at a slight privacy trade-off. "
+                                  "<a href='https://protonvpn.com/support/moderate-nat'>Read more</a>"),
+                               QStringLiteral("moderate-nat"),
+                               {tr("Strict (Type 3)"),
+                                tr("Moderate (Type 2)")},
+                               {QStringLiteral("off"), QStringLiteral("on")},
+                               /*requiresReconnect=*/true),
+                  QuickSettingIds::NAT_TYPE, tr("NAT Type"), Kind::Combo, true));
 
     //  VPN Accelerator
-    addPlus(makeToggleRow(m_plusSection,
-                          tr("VPN Accelerator"),
-                          tr("Boost connection speeds using advanced protocol techniques."),
-                          QStringLiteral("vpn-accelerator")));
+    addPlus(offer(makeToggleRow(m_plusSection,
+                                tr("VPN Accelerator"),
+                                tr("Boost connection speeds using advanced protocol techniques."),
+                                QStringLiteral("vpn-accelerator")),
+                  QuickSettingIds::VPN_ACCELERATOR, tr("VPN Accelerator"), Kind::Toggle, true));
 
     //  NetShield
-    addPlus(makeComboRow(m_plusSection,
-                         tr("NetShield Ad-blocker"),
-                         tr("Block malware, ads, and trackers at the DNS level."),
-                         QStringLiteral("netshield"),
-                         {
-                             tr("Off"),
-                             tr("Malware only"),
-                             tr("Malware, ads & trackers")
-                         },
-                         {
-                             QStringLiteral("off"),
-                             QStringLiteral("malware-only"),
-                             QStringLiteral("malware-ads-trackers")
-                         }));
+    addPlus(offer(makeComboRow(m_plusSection,
+                               tr("NetShield Ad-blocker"),
+                               tr("Block malware, ads, and trackers at the DNS level."),
+                               QStringLiteral("netshield"),
+                               {
+                                   tr("Off"),
+                                   tr("Malware only"),
+                                   tr("Malware, ads & trackers")
+                               },
+                               {
+                                   QStringLiteral("off"),
+                                   QStringLiteral("malware-only"),
+                                   QStringLiteral("malware-ads-trackers")
+                               }),
+                  QuickSettingIds::NETSHIELD, tr("NetShield"), Kind::Combo, true));
 
     //  Port Forwarding
     {
@@ -1319,112 +1270,14 @@ void SettingsPage::buildVpnTab(QTabWidget* tabs)
                                        tr("Bypass firewalls to connect to P2P servers and devices in your local network. "
                                           "<a href='https://protonvpn.com/support/port-forwarding'>Learn more</a>"),
                                        QStringLiteral("port-forwarding"));
-        m_portForwardingToggle = m_toggleRows.last().toggle;
+        m_portForwardingToggle = pfRow->findChild<ToggleWithStatus*>();
 
         connect(m_portForwardingToggle, &ToggleWithStatus::toggled, this, [this](const bool on)
         {
             if (on == true && NatPmpManager::isInstalled() == false)
             {
-                QDialog* dlg = new QDialog(this);
-                dlg->setWindowTitle(tr("natpmpc Not Installed"));
-                dlg->setAttribute(Qt::WA_DeleteOnClose);
-                dlg->setMinimumWidth(NATPMPC_DLG_MIN_WIDTH);
-
-                QVBoxLayout* layout = new QVBoxLayout(dlg);
-                layout->setSpacing(NATPMPC_DLG_SPACING);
-                layout->setContentsMargins(NATPMPC_DLG_MARGIN, NATPMPC_DLG_MARGIN,
-                                           NATPMPC_DLG_MARGIN, NATPMPC_DLG_BOT_MARGIN);
-
-                QHBoxLayout* titleRow = new QHBoxLayout();
-                QLabel* iconLabel = new QLabel(dlg);
-                iconLabel->setPixmap(dlg->style()->standardIcon(QStyle::SP_MessageBoxWarning)
-                                         .pixmap(NATPMPC_ICON_SIZE, NATPMPC_ICON_SIZE));
-                titleRow->addWidget(iconLabel);
-                titleRow->addSpacing(NATPMPC_ICON_SPACING);
-                QLabel* titleLabel = new QLabel(
-                    QStringLiteral("<b>%1</b>")
-                        .arg(tr("natpmpc is not installed.").toHtmlEscaped()),
-                    dlg);
-                titleLabel->setTextFormat(Qt::RichText);
-                titleRow->addWidget(titleLabel, 1);
-                layout->addLayout(titleRow);
-
-                QLabel* descLabel = new QLabel(
-                    tr("Port forwarding requires the <code>natpmpc</code> binary to display "
-                       "and keep the forwarded port alive. Without it, the forwarded port "
-                       "will not be shown in the app.<br><br>"
-                       "Install it using the command for your distribution:"),
-                    dlg);
-                descLabel->setTextFormat(Qt::RichText);
-                descLabel->setWordWrap(true);
-                layout->addWidget(descLabel);
-
-                const auto makeClipboardIcon = [](const int size) -> QIcon
-                {
-                    QPixmap pix(size, size);
-                    pix.fill(Qt::transparent);
-                    QPainter p(&pix);
-                    QSvgRenderer renderer(QStringLiteral(":/assets/clipboard2-plus.svg"));
-                    renderer.render(&p);
-                    p.setCompositionMode(QPainter::CompositionMode_SourceIn);
-                    p.fillRect(pix.rect(), Qt::white);
-                    p.end();
-                    return {pix};
-                };
-                const QIcon clipIcon = makeClipboardIcon(NATPMPC_COPY_ICON_SIZE);
-
-                auto addCmd = [&](const QString& distro, const QString& cmd)
-                {
-                    layout->addWidget(new QLabel(distro, dlg));
-
-                    QWidget* row  = new QWidget(dlg);
-                    QHBoxLayout* hbox = new QHBoxLayout(row);
-                    hbox->setContentsMargins(0, 0, 0, 0);
-                    hbox->setSpacing(NATPMPC_CMD_SPACING);
-
-                    QLineEdit* edit = new QLineEdit(cmd, row);
-                    edit->setReadOnly(true);
-                    edit->setObjectName(QStringLiteral("codeInput"));
-                    edit->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
-                    hbox->addWidget(edit, 1);
-
-                    QPushButton* copyBtn = new QPushButton(row);
-                    copyBtn->setIcon(clipIcon);
-                    copyBtn->setIconSize({NATPMPC_COPY_ICON_SIZE, NATPMPC_COPY_ICON_SIZE});
-                    copyBtn->setFixedSize(NATPMPC_COPY_BTN_SIZE, NATPMPC_COPY_BTN_SIZE);
-                    copyBtn->setToolTip(tr("Copy to Clipboard"));
-                    copyBtn->setStyleSheet(QStringLiteral(
-                        "QPushButton {"
-                        "  border: 1px solid palette(mid);"
-                        "  border-radius: 4px;"
-                        "  padding: 2px;"
-                        "  background: transparent;"
-                        "}"
-                        "QPushButton:hover {"
-                        "  border-color: palette(highlight);"
-                        "  background: rgba(255,255,255,15);"
-                        "}"
-                        "QPushButton:pressed {"
-                        "  background: rgba(255,255,255,30);"
-                        "}"));
-                    connect(copyBtn, &QPushButton::clicked, dlg, [cmd]()
-                    {
-                        QApplication::clipboard()->setText(cmd);
-                    });
-                    hbox->addWidget(copyBtn);
-                    layout->addWidget(row);
-                };
-
-                addCmd(tr("Debian / Ubuntu:"), QStringLiteral("sudo apt install natpmpc"));
-                addCmd(tr("Fedora:"),          QStringLiteral("sudo dnf install libnatpmp"));
-                addCmd(tr("Arch Linux:"),      QStringLiteral("sudo pacman -S libnatpmp"));
-
-                QDialogButtonBox* btnBox = new QDialogButtonBox(QDialogButtonBox::Ok, dlg);
-                connect(btnBox, &QDialogButtonBox::accepted, dlg, &QDialog::accept);
-                layout->addSpacing(NATPMPC_BOTTOM_SPACING);
-                layout->addWidget(btnBox);
-
-                dlg->exec();
+                NatpmpcDialog dlg(this);
+                dlg.exec();
             }
         });
 
@@ -1437,6 +1290,9 @@ void SettingsPage::buildVpnTab(QTabWidget* tabs)
         });
 
         addPlus(pfRow);
+        addQuickSetting({.id = QuickSettingIds::PORT_FORWARDING, .label = tr("Port Forwarding"),
+                         .section = Section::Vpn, .row = pfRow, .control = m_portForwardingToggle,
+                         .plusOnly = true});
 
         m_settingsPortRow = new QWidget(m_plusSection);
         m_settingsPortRow->setObjectName(QStringLiteral("settingsPortRow"));
@@ -1558,6 +1414,10 @@ void SettingsPage::buildVpnTab(QTabWidget* tabs)
         m_dnsApplyBtn->setFixedHeight(DNS_APPLY_BTN_HEIGHT);
         dnsAddrRl->addWidget(m_dnsApplyBtn);
         plusLayout->addWidget(dnsAddrRow);
+        addQuickSetting({.id = QuickSettingIds::CUSTOM_DNS, .label = tr("Custom DNS"),
+                         .section = Section::Vpn, .kind = Kind::CustomDns, .row = dnsRow,
+                         .control = m_dnsToggle, .dnsEdit = m_dnsEdit, .dnsApply = m_dnsApplyBtn,
+                         .plusOnly = true});
 
         connect(m_dnsToggle, &ToggleWithStatus::toggled, this, [this, dnsAddrRow](const bool on)
         {
@@ -1863,16 +1723,8 @@ void SettingsPage::setLoading(const bool loading)
             }
         }
     }
-    for (const ToggleRow& r : std::as_const(m_toggleRows))
-    {
-        r.toggle->setEnabled(loading == false);
-    }
-    for (const ComboRow& r : std::as_const(m_comboRows))
-    {
-        r.combo->setEnabled(loading == false);
-    }
-
     const bool controlsEnabled = loading == false;
+    m_cliControls->setEnabled(controlsEnabled);
     if (m_killSwitchToggle != nullptr)
     {
         m_killSwitchToggle->setEnabled(controlsEnabled);
@@ -1908,13 +1760,6 @@ void SettingsPage::onSettingsReady(const QMap<QString, QString>& info)
         return info.value(key).toLower().trimmed();
     };
 
-    for (const auto& row : std::as_const(m_toggleRows))
-    {
-        const QString v = val(row.cliKey);
-        const bool on = (v == row.onValue) || isOnString(v);
-        row.toggle->setOn(on, false);
-    }
-
     if (m_killSwitchToggle != nullptr && m_killSwitchSubPanel != nullptr)
     {
         const bool ksOn = val(QStringLiteral("kill-switch")) == QLatin1String("standard");
@@ -1922,16 +1767,6 @@ void SettingsPage::onSettingsReady(const QMap<QString, QString>& info)
         m_killSwitchToggle->setOn(ksOn, false);
         m_killSwitchToggle->blockSignals(false);
         m_killSwitchSubPanel->setVisible(ksOn);
-    }
-
-    for (const auto& row : std::as_const(m_comboRows))
-    {
-        const QString v = val(row.cliKey);
-        int idx = static_cast<int>(row.cliValues.indexOf(v));
-        idx = std::max(idx, 0);
-        row.combo->blockSignals(true);
-        row.combo->setCurrentIndex(idx);
-        row.combo->blockSignals(false);
     }
 
     // Custom DNS

@@ -210,6 +210,67 @@ DebugPage::DebugPage(QWidget* parent)
 
     layout->addWidget(makeDivider(content));
 
+    //  Home screen section
+    // More on the home screen than it usually has, for checking its layout:
+    // whether the dropdowns still fit below the content, and when they move.
+    layout->addWidget(makeSectionHeader(tr("Home Screen"), content));
+    {
+        QWidget* row = new QWidget(content);
+        QHBoxLayout* rowLayout = new QHBoxLayout(row);
+        rowLayout->setContentsMargins(0, 0, 0, 0);
+        rowLayout->setSpacing(GRID_H_SPACING);
+
+        QPushButton* warningBtn = new QPushButton(tr("Add Warning"), row);
+        warningBtn->setObjectName(QStringLiteral("secondaryButton"));
+        warningBtn->setCursor(Qt::PointingHandCursor);
+        warningBtn->setToolTip(
+            tr("Adds a sample warning to the home screen. Each click adds another, "
+               "short and long in turn."));
+        connect(warningBtn, &QPushButton::clicked, this, [this]()
+        {
+            const QStringList samples = {
+                tr("<b>Test warning %1</b> from the Debug page."),
+                tr("<b>Test warning %1</b> from the Debug page, long enough to wrap onto several "
+                   "lines so the warnings can be checked with taller content. Dismiss it with "
+                   "its close button or Clear All."),
+            };
+            const QString sample = samples.at(m_homeWarningCount % samples.size());
+            ++m_homeWarningCount;
+            emit homeWarningRequested(sample.arg(m_homeWarningCount));
+        });
+        rowLayout->addWidget(warningBtn);
+
+        // Shows the error and hides it again, to compare the two layouts.
+        QPushButton* errorBtn = new QPushButton(tr("Show Error"), row);
+        errorBtn->setObjectName(QStringLiteral("secondaryButton"));
+        errorBtn->setCursor(Qt::PointingHandCursor);
+        errorBtn->setToolTip(
+            tr("Puts the home screen into its error state with a sample CLI error, until "
+               "hidden again or the connection state next changes."));
+        connect(errorBtn, &QPushButton::clicked, this, [this, errorBtn]()
+        {
+            m_homeErrorShown = m_homeErrorShown == false;
+            errorBtn->setText(m_homeErrorShown == true ? tr("Hide Error") : tr("Show Error"));
+            if (m_homeErrorShown == false)
+            {
+                emit homeErrorHidden();
+                return;
+            }
+            // Read as a CLI failure, like a real traceback: the home screen
+            // then also suggests signing out and back in.
+            emit homeErrorRequested(QStringLiteral(
+                "Traceback (most recent call last):\n"
+                "  File \"/usr/bin/protonvpn\", line 8, in <module>\n"
+                "    sys.exit(main())\n"
+                "RuntimeError: Test error from the Debug page."));
+        });
+        rowLayout->addWidget(errorBtn);
+
+        layout->addWidget(row, 0, Qt::AlignLeft);
+    }
+
+    layout->addWidget(makeDivider(content));
+
     //  Sign-in screens section
     // Every screen the second factor can show, with the error it would carry,
     // for reviewing the design without a 2FA account or a security key.

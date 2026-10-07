@@ -16,7 +16,8 @@ A Qt GUI front-end for the [Proton VPN Linux CLI](https://protonvpn.com/support/
 - **Background polling** every 15 seconds: detects external state changes (CLI disconnect, reconnect, or location switch) and updates the UI without any user action
 - Sign in with your password plus an **authenticator code or a security key** (U2F/FIDO2)
 - **Animated globe** behind the power button that turns to face the country you connect to
-- **Split view** for wide windows: from 1200 px wide, the Countries list appears beside the main page
+- **Split view** for wide windows: from 1200 px wide, the countries appear beside the main page (up to a third of its width) as a grid of flag cards above the selected country's servers; the Countries button still opens the full-size page
+- **Quick settings** beside the main page when it is wide enough: up to 12 settings of your choice (right-click any setting in Settings to add or remove it, or one in the quick settings to remove it), IPv6, Kill Switch, NAT Type, NetShield, Port Forwarding, Globe Animation and the main page's show/hide switches by default; they stay in the split view
 - Proton-inspired **dark and light themes**, or follow your desktop's light/dark setting live
 - Confirmation dialog when quitting while the VPN is active: leave it running or disconnect cleanly
 - Single-instance protection to prevent duplicate launches
@@ -50,6 +51,7 @@ A Qt GUI front-end for the [Proton VPN Linux CLI](https://protonvpn.com/support/
 **Appearance tab**
 - **Theme**: System Settings, Dark, or Light
 - **Globe Animation** (Auto, On, or Off; Auto follows your desktop's reduce-motion setting) and **Pause When Unfocused**
+- Show or hide the **Countries** list and the **Quick Settings** beside the main page, and restore the default quick settings
 - Show or hide the **Selected Location** and **Favorites** dropdowns on the main page
 
 **VPN tab**

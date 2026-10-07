@@ -1,15 +1,21 @@
 #include "countriesPage.h"
 #include "../appConfig.h"
 #include "../geoUtils.h"
+#include "../themeManager.h"
 #include "../uiHelpers.h"
+#include "../widgets/gripSplitter.h"
+#include "../widgets/pixmapCache.h"
 #include "../widgets/starButton.h"
 
 #include <algorithm>
 #include <ranges>
 #include <QDialog>
+#include <QEvent>
+#include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPainter>
+#include <QPainterPath>
 #include <QPixmap>
 #include <QResizeEvent>
 #include <QSplitter>
@@ -25,6 +31,16 @@ namespace
 // Spinner animation tick for the "Loading countries/cities" placeholders.
 constexpr int SPINNER_INTERVAL_MS = 200;
 
+// Margins around the page on its own, and beside the home page, where they
+// mirror the quick settings on the other side: as far from the window's edge,
+// and with the title level with theirs.
+constexpr int PAGE_MARGIN         = 16;
+constexpr int SPLIT_SIDE_MARGIN   = 20;
+constexpr int SPLIT_TOP_MARGIN    = 18;
+constexpr int SPLIT_BOTTOM_MARGIN = 24;
+// Style property style.qss selects the split view look by.
+constexpr const char* SPLIT_VIEW_PROPERTY = "splitView";
+
 // Wide country-list icon geometry: a fixed box so the star + flag pair is
 // never downscaled, with the flag always at the same offset whether or not a
 // star is drawn in front of it.
@@ -34,6 +50,31 @@ constexpr int COUNTRY_FLAG_X      = 12;
 constexpr int COUNTRY_STAR_W      = 9;
 constexpr int COUNTRY_FLAG_W      = 20;
 constexpr int COUNTRY_FLAG_H      = 15;
+
+// Narrow accordion arrows, in the accordion's text color for each theme.
+constexpr QColor ACCORDION_ARROW_ON_DARK(0xea, 0xea, 0xea);
+constexpr QColor ACCORDION_ARROW_ON_LIGHT(0x1a, 0x1a, 0x2e);
+
+// Split view country cards: the flag (4:3, like the flag artwork) with
+// rounded corners and a hairline edge, so a white flag still shows on a light
+// card; the narrowest a card gets before a row holds one fewer; and a card's
+// height, its margins included.
+constexpr int    CARD_FLAG_W      = 64;
+constexpr int    CARD_FLAG_H      = 48;
+constexpr qreal  CARD_FLAG_RADIUS = 4.0;
+constexpr QColor CARD_FLAG_EDGE(0x80, 0x80, 0x80, 0x5a);
+constexpr int    CARD_MIN_W       = 104;
+constexpr int    CARD_H           = 104;
+// The local country's star, on a dark badge in the flag's top-right corner.
+constexpr int    STAR_BADGE_SIZE  = 18;
+constexpr int    STAR_BADGE_INSET = 3;
+constexpr QColor STAR_BADGE_COLOR(0, 0, 0, 0x96);
+
+// Default pane sizes: side by side, equal; stacked in the split view, as
+// shares of the height for the countries and for their cities.
+constexpr int LIST_PANE_W           = 200;
+constexpr int STACK_COUNTRIES_SHARE = 60;
+constexpr int STACK_CITIES_SHARE    = 40;
 } // namespace
 
 // Helper: does a feature string contain a keyword?
@@ -116,6 +157,43 @@ static QIcon makeCountryListIcon(const QString& countryCode, const bool pinned)
     return QIcon(pm);
 }
 
+// Split view card icon: the flag, and the local country's star on a badge.
+static QIcon makeCountryCardIcon(const QString& countryCode, const bool pinned)
+{
+    QPixmap pm = blankPixmap(QSizeF(CARD_FLAG_W, CARD_FLAG_H), qApp->devicePixelRatio());
+    QPainter p(&pm);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    // Inset half a pixel, so the edge is drawn on whole pixels.
+    const QRectF flagRect = QRectF(0, 0, CARD_FLAG_W, CARD_FLAG_H).adjusted(0.5, 0.5, -0.5, -0.5);
+    QPainterPath rounded;
+    rounded.addRoundedRect(flagRect, CARD_FLAG_RADIUS, CARD_FLAG_RADIUS);
+    p.setClipPath(rounded);
+    p.drawPixmap(QPointF(0, 0), GeoUtils::svgPixmap(
+        QStringLiteral(":/flags/") + countryCode.toLower(), CARD_FLAG_W, CARD_FLAG_H));
+    p.setClipping(false);
+    p.setPen(CARD_FLAG_EDGE);
+    p.setBrush(Qt::NoBrush);
+    p.drawRoundedRect(flagRect, CARD_FLAG_RADIUS, CARD_FLAG_RADIUS);
+
+    if (pinned)
+    {
+        const QRect badge(CARD_FLAG_W - STAR_BADGE_SIZE - STAR_BADGE_INSET, STAR_BADGE_INSET,
+                          STAR_BADGE_SIZE, STAR_BADGE_SIZE);
+        p.setPen(Qt::NoPen);
+        p.setBrush(STAR_BADGE_COLOR);
+        p.drawEllipse(badge);
+        drawPinnedStar(p, badge);
+    }
+    p.end();
+
+    // The same pixmap when selected: the view would otherwise tint the flag
+    // with the selection color.
+    QIcon icon(pm);
+    icon.addPixmap(pm, QIcon::Selected);
+    return icon;
+}
+
 // Header icon for narrow accordion: arrow indicator, optional star, then country flag.
 static QIcon makeAccordionHeaderIcon(const QString& countryCode,
                                      const bool expanded,
@@ -129,7 +207,8 @@ static QIcon makeAccordionHeaderIcon(const QString& countryCode,
     p.setRenderHint(QPainter::Antialiasing);
 
     const QString arrow = expanded ? QStringLiteral("▾") : QStringLiteral("▸");
-    p.setPen(QColor(0xea, 0xea, 0xea));
+    const QColor arrowColor = ThemeManager::isDark() == true ? ACCORDION_ARROW_ON_DARK : ACCORDION_ARROW_ON_LIGHT;
+    p.setPen(arrowColor);
     QFont f = p.font();
     f.setBold(true);
     f.setPointSize(qMax(f.pointSize() - 1, 8));
@@ -141,7 +220,7 @@ static QIcon makeAccordionHeaderIcon(const QString& countryCode,
     {
         drawPinnedStar(p, QRect(x, 0, 9, 16));
         p.setFont(f);
-        p.setPen(QColor(0xea, 0xea, 0xea));
+        p.setPen(arrowColor);
         x += 12; // star width + right padding
     }
 
@@ -202,6 +281,13 @@ QString CountriesPage::bubbleStyle(const bool active)
             "QPushButton { background: #6d4aff; color: white; border: 1px solid #6d4aff; "
             "border-radius: 12px; padding: 3px 12px; min-height: 16px; font-size: 12px; }"
             "QPushButton:hover { background: #7d5aff; }");
+    // Inactive bubbles are outlined in the theme's own colors, which the
+    // light theme needs darker to show at all.
+    if (ThemeManager::isDark() == false)
+        return QStringLiteral(
+            "QPushButton { background: transparent; color: #5a5a7a; border: 1px solid #c8c8d8; "
+            "border-radius: 12px; padding: 3px 12px; min-height: 16px; font-size: 12px; }"
+            "QPushButton:hover { border-color: #6d4aff; color: #1a1a2e; }");
     return QStringLiteral(
         "QPushButton { background: transparent; color: #aaaacc; border: 1px solid #444466; "
         "border-radius: 12px; padding: 3px 12px; min-height: 16px; font-size: 12px; }"
@@ -216,7 +302,7 @@ CountriesPage::CountriesPage(VpnManager* manager, QWidget* parent)
       m_localCountryCode(GeoUtils::detectUserCountry())
 {
     auto* mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(16, 16, 16, 16);
+    mainLayout->setContentsMargins(PAGE_MARGIN, PAGE_MARGIN, PAGE_MARGIN, PAGE_MARGIN);
     mainLayout->setSpacing(10);
 
     //  Header row
@@ -429,6 +515,146 @@ CountriesPage::CountriesPage(VpnManager* manager, QWidget* parent)
     m_countriesSpinnerTimer->start();
 }
 
+void CountriesPage::setSplitView(const bool split)
+{
+    if (m_splitView == split) return;
+    m_splitView = split;
+    setProperty(SPLIT_VIEW_PROPERTY, split);
+    if (split == true)
+    {
+        layout()->setContentsMargins(SPLIT_SIDE_MARGIN, SPLIT_TOP_MARGIN, PAGE_MARGIN, SPLIT_BOTTOM_MARGIN);
+    }
+    else
+    {
+        layout()->setContentsMargins(PAGE_MARGIN, PAGE_MARGIN, PAGE_MARGIN, PAGE_MARGIN);
+    }
+
+    // Countries above their cities beside the home page, which leaves each
+    // pane the full width; side by side on the page of its own.
+    QSplitter* splitter = split == true ? static_cast<QSplitter*>(m_stackSplitter) : m_listSplitter;
+    splitter->addWidget(m_countriesPane);
+    splitter->addWidget(m_citiesPane);
+    m_stackSplitter->setVisible(split);
+    m_listSplitter->setVisible(split == false);
+    if (split == true)
+    {
+        resetStackSizes();
+    }
+    else
+    {
+        m_listSplitter->setSizes({LIST_PANE_W, LIST_PANE_W});
+    }
+    m_countriesList->setObjectName(split == true ? QStringLiteral("countryGrid") : QStringLiteral("serverList"));
+
+    // The style rules hang off this page's property, and Qt only applies a
+    // changed rule to a widget when it is polished again.
+    const QList<QWidget*> widgets = findChildren<QWidget*>();
+    for (QWidget* widget : widgets)
+    {
+        style()->unpolish(widget);
+        style()->polish(widget);
+    }
+
+    // Beside the home page the panes always have the width the narrow
+    // accordion is for, so it is not used there.
+    const bool narrow = split == false && width() < kNarrowThreshold;
+    if (narrow != m_narrowMode)
+    {
+        switchLayout(narrow);
+    }
+    // Rebuilt with the countries' cards or list icons, keeping the selection.
+    if (m_allCountries.isEmpty() == false)
+    {
+        applyFilter();
+    }
+    updateCountriesListMode();
+}
+
+void CountriesPage::resetStackSizes() const
+{
+    m_stackSplitter->setSizes({STACK_COUNTRIES_SHARE, STACK_CITIES_SHARE});
+}
+
+// Beside the home page the countries are a grid of cards: the flag over the
+// name, elided to the card. Elsewhere they are a list, as is the split view's
+// list while it holds only its loading message, which a card could not show.
+void CountriesPage::updateCountriesListMode() const
+{
+    const bool grid = m_splitView == true && m_countriesList->count() > 0
+                   && m_countriesList->item(0)->data(Qt::UserRole).toString().isEmpty() == false;
+    const bool isGrid = m_countriesList->viewMode() == QListView::IconMode;
+    if (grid != isGrid)
+    {
+        if (grid == true)
+        {
+            // Icon mode also turns on wrapping and free movement; the cards
+            // stay where the grid puts them.
+            m_countriesList->setViewMode(QListView::IconMode);
+            m_countriesList->setMovement(QListView::Static);
+            m_countriesList->setResizeMode(QListView::Adjust);
+            m_countriesList->setUniformItemSizes(true);
+            m_countriesList->setIconSize(QSize(CARD_FLAG_W, CARD_FLAG_H));
+            m_countriesList->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+        }
+        else
+        {
+            m_countriesList->setViewMode(QListView::ListMode);
+            m_countriesList->setResizeMode(QListView::Fixed);
+            m_countriesList->setUniformItemSizes(false);
+            m_countriesList->setGridSize(QSize());
+            m_countriesList->setIconSize(QSize(COUNTRY_ICON_W, COUNTRY_ICON_H));
+            m_countriesList->resetVerticalScrollMode();
+        }
+    }
+    updateCountryGridSize();
+}
+
+void CountriesPage::updateCountryGridSize() const
+{
+    if (m_countriesList->viewMode() != QListView::IconMode) return;
+    // As many whole cards as fit, stretched to share the row between them.
+    // Each card fills its grid cell: on its own, a card is only as wide as
+    // its flag and name need.
+    const int available = m_countriesList->viewport()->width();
+    const int columns = std::max(1, available / CARD_MIN_W);
+    const QSize cell(available / columns, CARD_H);
+    m_countriesList->setGridSize(cell);
+    // Every time: a search or filter rebuilds the cards at their own size.
+    for (int i = 0; i < m_countriesList->count(); ++i)
+    {
+        m_countriesList->item(i)->setSizeHint(cell);
+    }
+}
+
+void CountriesPage::refreshAccordionIcons() const
+{
+    for (const AccordionItem& acc : m_accordion)
+    {
+        acc.headerBtn->setIcon(makeAccordionHeaderIcon(acc.headerBtn->property("countryCode").toString(),
+                                                       acc.expanded,
+                                                       acc.headerBtn->property("isPinned").toBool()));
+    }
+}
+
+bool CountriesPage::eventFilter(QObject* obj, QEvent* event)
+{
+    if (obj == m_countriesList->viewport() && event->type() == QEvent::Resize)
+    {
+        updateCountryGridSize();
+    }
+    return QWidget::eventFilter(obj, event);
+}
+
+void CountriesPage::changeEvent(QEvent* event)
+{
+    QWidget::changeEvent(event);
+    if (event->type() == QEvent::PaletteChange)
+    {
+        refreshAccordionIcons();
+        updateBubbleStyles();
+    }
+}
+
 // ============================================================
 // buildWideLayout
 // ============================================================
@@ -439,23 +665,26 @@ void CountriesPage::buildWideLayout(QVBoxLayout* parent)
     wideLayout->setContentsMargins(0, 0, 0, 0);
     wideLayout->setSpacing(8);
 
-    auto* splitter = new QSplitter(Qt::Horizontal, m_wideWidget);
+    m_listSplitter = new QSplitter(Qt::Horizontal, m_wideWidget);
 
     // Countries panel
-    auto* countriesWidget = new QWidget(splitter);
-    auto* countriesLayout = new QVBoxLayout(countriesWidget);
+    m_countriesPane = new QWidget(m_listSplitter);
+    auto* countriesLayout = new QVBoxLayout(m_countriesPane);
     countriesLayout->setContentsMargins(0, 0, 0, 0);
-    m_countriesList = new QListWidget(countriesWidget);
+    m_countriesList = new QListWidget(m_countriesPane);
     m_countriesList->setObjectName(QStringLiteral("serverList"));
     // Wide mode uses a composite icon (star + flag) so reserve enough width.
-    m_countriesList->setIconSize(QSize(40, 16));
+    m_countriesList->setIconSize(QSize(COUNTRY_ICON_W, COUNTRY_ICON_H));
+    // As a grid, its cards are sized to the viewport (see updateCountryGridSize()).
+    m_countriesList->viewport()->installEventFilter(this);
     connect(m_countriesList, &QListWidget::itemClicked,
             this, &CountriesPage::onWideCountrySelected);
     countriesLayout->addWidget(m_countriesList);
-    splitter->addWidget(countriesWidget);
+    m_listSplitter->addWidget(m_countriesPane);
 
     // Cities panel
-    auto* citiesWidget = new QWidget(splitter);
+    m_citiesPane = new QWidget(m_listSplitter);
+    auto* citiesWidget = m_citiesPane;
     auto* citiesLayout = new QVBoxLayout(citiesWidget);
     citiesLayout->setContentsMargins(0, 0, 0, 0);
     citiesLayout->setSpacing(4);
@@ -465,13 +694,24 @@ void CountriesPage::buildWideLayout(QVBoxLayout* parent)
     m_citiesList = new QListWidget(citiesWidget);
     m_citiesList->setObjectName(QStringLiteral("serverList"));
     m_citiesList->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    // Rows laid out again on every resize: they carry widgets (feature icons,
+    // the star) along their right edge, which otherwise keep the width the
+    // list had when they were added and can end up out of sight.
+    m_citiesList->setResizeMode(QListView::Adjust);
     connect(m_citiesList, &QListWidget::itemClicked,
             this, &CountriesPage::onWideCitySelected);
     citiesLayout->addWidget(m_citiesList);
-    splitter->addWidget(citiesWidget);
+    m_listSplitter->addWidget(citiesWidget);
 
-    splitter->setSizes({200, 200});
-    wideLayout->addWidget(splitter, 1);
+    m_listSplitter->setSizes({LIST_PANE_W, LIST_PANE_W});
+    wideLayout->addWidget(m_listSplitter, 1);
+
+    // The split view's arrangement, which setSplitView() moves the panes into.
+    m_stackSplitter = new GripSplitter(Qt::Vertical, m_wideWidget);
+    m_stackSplitter->setChildrenCollapsible(false);
+    m_stackSplitter->setVisible(false);
+    connect(m_stackSplitter, &GripSplitter::handleDoubleClicked, this, &CountriesPage::resetStackSizes);
+    wideLayout->addWidget(m_stackSplitter, 1);
 
     // Connect button
     m_connectBtn = new QPushButton(tr("Connect to Selected"), m_wideWidget);
@@ -501,6 +741,7 @@ void CountriesPage::buildNarrowLayout(QVBoxLayout* parent)
     narrowOuterLayout->setSpacing(0);
 
     m_narrowScroll = new QScrollArea(m_narrowWidget);
+    m_narrowScroll->setObjectName(QStringLiteral("countriesAccordion"));
     m_narrowScroll->setWidgetResizable(true);
     m_narrowScroll->setFrameShape(QFrame::NoFrame);
 
@@ -543,7 +784,7 @@ void CountriesPage::buildNarrowLayout(QVBoxLayout* parent)
 void CountriesPage::resizeEvent(QResizeEvent* event)
 {
     QWidget::resizeEvent(event);
-    const bool shouldBeNarrow = event->size().width() < kNarrowThreshold;
+    const bool shouldBeNarrow = m_splitView == false && event->size().width() < kNarrowThreshold;
     if (shouldBeNarrow != m_narrowMode)
         switchLayout(shouldBeNarrow);
 }
@@ -598,6 +839,7 @@ void CountriesPage::refresh()
         item->setFlags(Qt::NoItemFlags);
         item->setForeground(QColor(0x99, 0x99, 0xbb));
         m_countriesList->addItem(item);
+        updateCountriesListMode();
         m_countriesSpinnerTimer->start();
     }
 
@@ -982,7 +1224,16 @@ void CountriesPage::populateWide() const
         QListWidgetItem* item = new QListWidgetItem(name);
         item->setData(Qt::UserRole, code);
         item->setData(Qt::UserRole + 10, isPinned);
-        item->setIcon(makeCountryListIcon(code, isPinned));
+        if (m_splitView == true)
+        {
+            item->setIcon(makeCountryCardIcon(code, isPinned));
+            // The card elides the name.
+            item->setToolTip(name);
+        }
+        else
+        {
+            item->setIcon(makeCountryListIcon(code, isPinned));
+        }
 
         if (isPinned)
         {
@@ -1003,6 +1254,7 @@ void CountriesPage::populateWide() const
     {
         m_countriesList->addItem(it);
     }
+    updateCountriesListMode();
 }
 
 // ============================================================
@@ -1275,8 +1527,11 @@ void CountriesPage::addWideCityItem(const QString& city, const QString& features
             0, Qt::AlignVCenter);
     }
 
+    // As tall as the countries' rows beside it; as a grid of cards above it,
+    // the countries have no rows to match.
     int itemH = -1;
-    if (m_countriesList != nullptr && m_countriesList->count() > 0)
+    if (m_countriesList != nullptr && m_countriesList->count() > 0
+        && m_countriesList->viewMode() == QListView::ListMode)
     {
         itemH = m_countriesList->sizeHintForRow(0);
     }

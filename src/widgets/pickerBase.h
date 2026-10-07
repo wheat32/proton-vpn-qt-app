@@ -76,6 +76,22 @@ public:
         setFixedWidth(c == true ? COLLAPSED_PICKER_WIDTH : EXPANDED_PICKER_WIDTH);
     }
 
+    // The picker's height when expanded, also while it is collapsed, so the
+    // page can tell whether the expanded pickers would fit before moving them.
+    [[nodiscard]] int expandedHeight() const
+    {
+        if (m_collapsed == false || m_topLine == nullptr || m_bottomLine == nullptr)
+        {
+            return sizeHint().height();
+        }
+        // Collapsed, the header holds only the leading icon between
+        // PICKER_MARGIN margins; expanded, the taller of the icon and the two
+        // text lines between PICKER_EXPANDED_V_MARGIN ones.
+        const int textH = m_topLine->sizeHint().height() + TEXT_COL_SPACING + m_bottomLine->sizeHint().height();
+        return sizeHint().height() - 2 * PICKER_MARGIN - LEADING_ICON_H
+             + 2 * PICKER_EXPANDED_V_MARGIN + std::max(LEADING_ICON_H, textH);
+    }
+
 protected:
     // Builds the standard picker header - leading icon, two-line text block,
     // chevron - plus the outer layout, the popup and the row-click wiring.

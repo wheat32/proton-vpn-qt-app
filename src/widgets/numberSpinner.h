@@ -101,6 +101,18 @@ public:
     }
 
     [[nodiscard]] int value() const { return m_value; }
+    [[nodiscard]] int minimum() const { return m_min; }
+    [[nodiscard]] int maximum() const { return m_max; }
+
+    // Sets the value the way the arrows or typing would, emitting
+    // valueChanged() if it changes. setValue() emits nothing.
+    void setValueAsUser(const int value)
+    {
+        const int clamped = qBound(m_min, value, m_max);
+        if (clamped == m_value) return;
+        setValue(clamped);
+        emit valueChanged(m_value);
+    }
 
 signals:
     void valueChanged(int value);

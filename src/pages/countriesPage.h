@@ -13,6 +13,9 @@
 #include "../vpnManager.h"
 #include "../widgets/elidaLabel.h"
 
+class GripSplitter;
+class QSplitter;
+
 // ---------------------------------------------------------------------------
 // CountriesPage – server browser with feature-filter bubbles and a
 // responsive layout (wide = side-by-side splitter, narrow = accordion list).
@@ -24,12 +27,18 @@ class CountriesPage : public QWidget
 public:
     explicit CountriesPage(VpnManager* manager, QWidget* parent = nullptr);
     void refresh();
+    // Set while the page sits beside the home page (MainWindow's split view):
+    // it is then styled and spaced like the home page's quick settings, with
+    // the countries as a grid of cards above their cities.
+    void setSplitView(bool split);
 
 signals:
     void connectRequested(const QString& countryCode, const QString& city);
 
 protected:
     void resizeEvent(QResizeEvent* event) override;
+    void changeEvent(QEvent* event) override;
+    bool eventFilter(QObject* obj, QEvent* event) override;
 
 private:
     VpnManager* m_manager;
@@ -45,6 +54,7 @@ private:
 
     static constexpr int kNarrowThreshold = 515;
     bool m_narrowMode = false;
+    bool m_splitView  = false; // see setSplitView()
 
     bool m_filterP2P        = false;
     bool m_filterSecureCore = false;
@@ -61,8 +71,13 @@ private:
     QPushButton* m_bubbleSecureCore = nullptr;
     QPushButton* m_bubbleTor        = nullptr;
 
-    // Wide layout
+    // Wide layout. The two panes sit side by side in m_listSplitter, or in
+    // the split view one above the other in m_stackSplitter.
     QWidget*     m_wideWidget    = nullptr;
+    QSplitter*   m_listSplitter  = nullptr;
+    GripSplitter* m_stackSplitter = nullptr;
+    QWidget*     m_countriesPane = nullptr;
+    QWidget*     m_citiesPane    = nullptr;
     QListWidget* m_countriesList = nullptr;
     QListWidget* m_citiesList    = nullptr;
     ElideLabel*  m_citiesLabel   = nullptr;
@@ -98,6 +113,16 @@ private:
     bool countryPassesFilter(const QString& code) const;
 
     void populateWide() const;
+    // Shows the countries as a grid of cards in the split view, as a list
+    // otherwise; see the .cpp.
+    void updateCountriesListMode() const;
+    // Sizes the grid's cards so whole cards fill each row.
+    void updateCountryGridSize() const;
+    // Puts the two panes of the split view back to their default sizes.
+    void resetStackSizes() const;
+    // Redraws the accordion's arrows, which follow the theme (as do the
+    // filter bubbles, see bubbleStyle()).
+    void refreshAccordionIcons() const;
     void populateNarrow();
 
     void addWideCityItem(const QString& city, const QString& features) const;

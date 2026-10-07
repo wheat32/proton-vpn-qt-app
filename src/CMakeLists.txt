@@ -77,6 +77,9 @@ set(SOURCES
         cli/platformUtils.h
         mainWindow.h
         mainWindow.cpp
+        quickSettingIds.h
+        widgets/cliSettingControls.h
+        widgets/cliSettingControls.cpp
         widgets/elidaLabel.h
         widgets/stackPage.h
         widgets/infoBanner.h
@@ -84,11 +87,20 @@ set(SOURCES
         widgets/globeWidget.h
         widgets/pixmapCache.h
         widgets/globeWidget.cpp
+        widgets/globeAnimationCombo.h
+        widgets/globeAnimationCombo.cpp
         widgets/gripSplitter.h
         widgets/pickerBase.h
         widgets/pickerDrawer.h
         widgets/pickerDrawer.cpp
+        widgets/plusDivider.h
+        widgets/quickSettingSource.h
+        widgets/quickSettingsMenu.h
+        widgets/quickSettingsMenu.cpp
+        widgets/quickSettingsPanel.h
+        widgets/quickSettingsPanel.cpp
         widgets/styleUtils.h
+        widgets/styledComboBox.h
         widgets/svgBanner.h
         widgets/toastNotification.h
         widgets/toggleSwitch.h
@@ -114,8 +126,12 @@ set(SOURCES
         dialogs/aboutDialog.cpp
         dialogs/errorDetailsDialog.h
         dialogs/errorDetailsDialog.cpp
+        dialogs/natpmpcDialog.h
+        dialogs/natpmpcDialog.cpp
         dialogs/quitDialog.h
         dialogs/quitDialog.cpp
+        dialogs/reconnectDialog.h
+        dialogs/reconnectDialog.cpp
         dialogs/updateAvailableDialog.h
         dialogs/updateAvailableDialog.cpp
         dialogs/whatsNewDialog.h

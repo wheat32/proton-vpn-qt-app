@@ -28,6 +28,12 @@ signals:
     void cliNotRespondingPageRequested();
     // Show the login page on one of its second-factor screens.
     void signinScreenRequested(SigninPrompt prompt, const QString& error);
+    // Add a sample warning to the home screen, or put it into its error state
+    // with sample CLI output, for checking how its layout copes.
+    void homeWarningRequested(const QString& message);
+    void homeErrorRequested(const QString& details);
+    // Put the home screen back the way the connection state has it.
+    void homeErrorHidden();
 
 private slots:
     void refreshValues() const;
@@ -49,4 +55,8 @@ private:
 #ifdef QT_DEBUG
     QLineEdit* m_migrationVersionInput = nullptr;
 #endif
+    // Sample warnings added so far, to number the next one.
+    int m_homeWarningCount = 0;
+    // Whether the sample error is on the home screen (its button hides it).
+    bool m_homeErrorShown = false;
 };

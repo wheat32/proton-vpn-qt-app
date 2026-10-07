@@ -2,6 +2,7 @@
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include "appConfig.h"
+#include "quickSettingIds.h"
 
 // AppConfig is a singleton, so all test slots share the same instance.
 // We use QStandardPaths::setTestModeEnabled(true) to redirect file I/O to a
@@ -173,8 +174,8 @@ private slots:
 
     void setSplitViewCountriesRatio_inRange_storesValue()
     {
-        AppConfig::instance().setSplitViewCountriesRatio(0.5);
-        QCOMPARE(AppConfig::instance().splitViewCountriesRatio(), 0.5);
+        AppConfig::instance().setSplitViewCountriesRatio(0.25);
+        QCOMPARE(AppConfig::instance().splitViewCountriesRatio(), 0.25);
         // Restore
         AppConfig::instance().setSplitViewCountriesRatio(AppConfig::SPLIT_RATIO_DEFAULT);
     }
@@ -187,6 +188,79 @@ private slots:
         QCOMPARE(AppConfig::instance().splitViewCountriesRatio(), AppConfig::SPLIT_RATIO_MAX);
         // Restore
         AppConfig::instance().setSplitViewCountriesRatio(AppConfig::SPLIT_RATIO_DEFAULT);
+    }
+
+    void splitRatioMax_isAThird()
+    {
+        QVERIFY(qFuzzyCompare(AppConfig::SPLIT_RATIO_MAX * 3.0, 1.0));
+        QVERIFY(AppConfig::SPLIT_RATIO_DEFAULT <= AppConfig::SPLIT_RATIO_MAX);
+    }
+
+    //  Main page: countries and quick settings
+    void defaults_showCountriesSidebarAndQuickSettingsAreTrue()
+    {
+        QCOMPARE(AppConfig::instance().showCountriesSidebar(), true);
+        QCOMPARE(AppConfig::instance().showQuickSettings(), true);
+    }
+
+    void setShowCountriesSidebar_storesValue()
+    {
+        AppConfig::instance().setShowCountriesSidebar(false);
+        QCOMPARE(AppConfig::instance().showCountriesSidebar(), false);
+        // Restore
+        AppConfig::instance().setShowCountriesSidebar(true);
+    }
+
+    void setShowQuickSettings_storesValue()
+    {
+        AppConfig::instance().setShowQuickSettings(false);
+        QCOMPARE(AppConfig::instance().showQuickSettings(), false);
+        // Restore
+        AppConfig::instance().setShowQuickSettings(true);
+    }
+
+    void defaults_quickSettingsAreTheDefaults()
+    {
+        QCOMPARE(AppConfig::instance().quickSettings(), AppConfig::defaultQuickSettings());
+    }
+
+    void defaultQuickSettings_fitAndIncludeShowCountries()
+    {
+        const QStringList ids = AppConfig::defaultQuickSettings();
+        QVERIFY(ids.size() <= AppConfig::QUICK_SETTINGS_MAX);
+        QVERIFY(ids.contains(QuickSettingIds::SHOW_COUNTRIES));
+        QStringList unique = ids;
+        unique.removeDuplicates();
+        QCOMPARE(unique, ids);
+    }
+
+    void setQuickSettings_dropsRepeats()
+    {
+        AppConfig::instance().setQuickSettings({QuickSettingIds::IPV6, QuickSettingIds::THEME, QuickSettingIds::IPV6});
+        QCOMPARE(AppConfig::instance().quickSettings(), QStringList({QuickSettingIds::IPV6, QuickSettingIds::THEME}));
+        // Restore
+        AppConfig::instance().setQuickSettings(AppConfig::defaultQuickSettings());
+    }
+
+    void setQuickSettings_tooMany_keepsTheFirstMax()
+    {
+        QStringList ids;
+        for (int i = 0; i <= AppConfig::QUICK_SETTINGS_MAX; ++i)
+        {
+            ids << QStringLiteral("setting-%1").arg(i);
+        }
+        AppConfig::instance().setQuickSettings(ids);
+        QCOMPARE(AppConfig::instance().quickSettings(), ids.mid(0, AppConfig::QUICK_SETTINGS_MAX));
+        // Restore
+        AppConfig::instance().setQuickSettings(AppConfig::defaultQuickSettings());
+    }
+
+    void setQuickSettings_empty_isKept()
+    {
+        AppConfig::instance().setQuickSettings({});
+        QVERIFY(AppConfig::instance().quickSettings().isEmpty());
+        // Restore
+        AppConfig::instance().setQuickSettings(AppConfig::defaultQuickSettings());
     }
 };
 

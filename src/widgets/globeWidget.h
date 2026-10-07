@@ -25,7 +25,8 @@ class GlobeWidget : public QWidget
 public:
     explicit GlobeWidget(QWidget* parent = nullptr);
 
-    // The globe is centered on this widget's center (the power button). It
+    // The globe is centered horizontally on this widget's center (the power
+    // button) and vertically on the globe widget itself. It
     // must be a descendant of this widget's parent.
     void setAnchor(QWidget* anchor);
 
@@ -73,6 +74,8 @@ private:
     [[nodiscard]] QQuaternion turnOrientation() const;
     [[nodiscard]] Pose restingPose() const;
     [[nodiscard]] QQuaternion currentOrientation() const;
+    // The disc's size in logical pixels before rounding (see renderSize()).
+    [[nodiscard]] qreal wantedDiameter() const;
     [[nodiscard]] int renderSize() const;
     [[nodiscard]] QRectF discRect() const;
     // The area the disc and its glow cover.

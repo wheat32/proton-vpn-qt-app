@@ -2,12 +2,14 @@
 #include <QFile>
 // ReSharper disable once CppUnusedIncludeDirective
 #include <QJsonDocument> // Ignore unused include warning; we do use QJsonDocument
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QStandardPaths>
 #include "appConfig.h"
 #include "debug.h"
 #include "fileLogger.h"
 #include "jsonFile.h"
+#include "quickSettingIds.h"
 
 namespace
 {
@@ -19,6 +21,13 @@ constexpr int DEFAULT_RECENT_CONNECTIONS_COUNT = 5;
 QString boolText(const bool value)
 {
     return value == true ? QStringLiteral("true") : QStringLiteral("false");
+}
+
+// The quick settings as they may be kept: each once, and no more than fit.
+QStringList normalizedQuickSettings(QStringList ids)
+{
+    ids.removeDuplicates();
+    return ids.mid(0, AppConfig::QUICK_SETTINGS_MAX);
 }
 } // namespace
 
@@ -110,6 +119,20 @@ void AppConfig::load()
     m_closeToTray = obj.value(QStringLiteral("close_to_tray")).toBool(true);
     m_showLocationPicker = obj.value(QStringLiteral("show_location_picker")).toBool(true);
     m_showFavoritesDropdown = obj.value(QStringLiteral("show_favorites_dropdown")).toBool(true);
+    m_showCountriesSidebar = obj.value(QStringLiteral("show_countries_sidebar")).toBool(true);
+    m_showQuickSettings = obj.value(QStringLiteral("show_quick_settings")).toBool(true);
+    // Missing until the quick settings are first changed; an empty list is
+    // the user's choice of none.
+    if (obj.contains(QStringLiteral("quick_settings")) == true)
+    {
+        QStringList ids;
+        for (const QJsonValue& id : obj.value(QStringLiteral("quick_settings")).toArray())
+        {
+            ids << id.toString();
+        }
+        ids.removeAll(QString());
+        m_quickSettings = normalizedQuickSettings(ids);
+    }
     m_favoritesEnabled = obj.value(QStringLiteral("favorites_enabled")).toBool(true);
     m_lastSeenVersion = obj.value(QStringLiteral("last_seen_version")).toString();
     m_checkForUpdates = obj.value(QStringLiteral("check_for_updates")).toBool(true);
@@ -149,6 +172,9 @@ void AppConfig::logLoadedConfig() const
     DBG_SETTINGS(QStringLiteral("  close_to_tray            = ") + boolText(m_closeToTray));
     DBG_SETTINGS(QStringLiteral("  show_location_picker     = ") + boolText(m_showLocationPicker));
     DBG_SETTINGS(QStringLiteral("  show_favorites_dropdown  = ") + boolText(m_showFavoritesDropdown));
+    DBG_SETTINGS(QStringLiteral("  show_countries_sidebar   = ") + boolText(m_showCountriesSidebar));
+    DBG_SETTINGS(QStringLiteral("  show_quick_settings      = ") + boolText(m_showQuickSettings));
+    DBG_SETTINGS(QStringLiteral("  quick_settings           = ") + m_quickSettings.join(QStringLiteral(", ")));
     DBG_SETTINGS(QStringLiteral("  favorites_enabled        = ") + boolText(m_favoritesEnabled));
     DBG_SETTINGS(QStringLiteral("  last_seen_version        = ") + m_lastSeenVersion);
     DBG_SETTINGS(QStringLiteral("  check_for_updates        = ") + boolText(m_checkForUpdates));
@@ -173,6 +199,9 @@ bool AppConfig::save() const
     obj[QStringLiteral("close_to_tray")] = m_closeToTray;
     obj[QStringLiteral("show_location_picker")] = m_showLocationPicker;
     obj[QStringLiteral("show_favorites_dropdown")] = m_showFavoritesDropdown;
+    obj[QStringLiteral("show_countries_sidebar")] = m_showCountriesSidebar;
+    obj[QStringLiteral("show_quick_settings")] = m_showQuickSettings;
+    obj[QStringLiteral("quick_settings")] = QJsonArray::fromStringList(m_quickSettings);
     obj[QStringLiteral("favorites_enabled")] = m_favoritesEnabled;
     if (m_lastSeenVersion.isEmpty() == false)
     {
@@ -309,6 +338,53 @@ void AppConfig::setShowFavoritesDropdown(const bool value)
     (void)save();
 }
 
+bool AppConfig::showCountriesSidebar() const { return m_showCountriesSidebar; }
+
+void AppConfig::setShowCountriesSidebar(const bool value)
+{
+    if (m_showCountriesSidebar == value) return;
+    DBG_SETTINGS(QStringLiteral("Setting changed: show_countries_sidebar = ") + boolText(value));
+    m_showCountriesSidebar = value;
+    (void)save();
+}
+
+bool AppConfig::showQuickSettings() const { return m_showQuickSettings; }
+
+void AppConfig::setShowQuickSettings(const bool value)
+{
+    if (m_showQuickSettings == value) return;
+    DBG_SETTINGS(QStringLiteral("Setting changed: show_quick_settings = ") + boolText(value));
+    m_showQuickSettings = value;
+    (void)save();
+}
+
+QStringList AppConfig::quickSettings() const { return m_quickSettings; }
+
+// static
+QStringList AppConfig::defaultQuickSettings()
+{
+    return {
+        QuickSettingIds::IPV6,
+        QuickSettingIds::KILL_SWITCH,
+        QuickSettingIds::NAT_TYPE,
+        QuickSettingIds::NETSHIELD,
+        QuickSettingIds::PORT_FORWARDING,
+        QuickSettingIds::GLOBE_ANIMATION,
+        QuickSettingIds::SHOW_COUNTRIES,
+        QuickSettingIds::SHOW_LOCATION_PICKER,
+        QuickSettingIds::SHOW_FAVORITES_DROPDOWN,
+    };
+}
+
+void AppConfig::setQuickSettings(const QStringList& value)
+{
+    const QStringList normalized = normalizedQuickSettings(value);
+    if (m_quickSettings == normalized) return;
+    DBG_SETTINGS(QStringLiteral("Setting changed: quick_settings = ") + normalized.join(QStringLiteral(", ")));
+    m_quickSettings = normalized;
+    (void)save();
+}
+
 bool AppConfig::favoritesEnabled() const { return m_favoritesEnabled; }
 
 void AppConfig::setFavoritesEnabled(const bool value)
@@ -367,6 +443,9 @@ void AppConfig::resetToDefaults()
     m_theme                  = Theme::System;
     m_showLocationPicker     = true;
     m_showFavoritesDropdown  = true;
+    m_showCountriesSidebar   = true;
+    m_showQuickSettings      = true;
+    m_quickSettings          = defaultQuickSettings();
     m_favoritesEnabled       = true;
     m_lastSeenVersion        = QString();
     m_checkForUpdates        = true;

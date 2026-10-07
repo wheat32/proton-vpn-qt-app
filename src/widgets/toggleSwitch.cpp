@@ -45,6 +45,13 @@ void ToggleSwitch::setOn(const bool on, const bool animate)
     }
 }
 
+void ToggleSwitch::setOnAsUser(const bool on)
+{
+    if (m_on == on) return;
+    setOn(on);
+    emit toggled(m_on);
+}
+
 void ToggleSwitch::paintEvent(QPaintEvent*)
 {
     QPainter p(this);
