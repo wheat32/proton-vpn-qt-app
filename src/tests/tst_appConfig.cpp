@@ -220,6 +220,30 @@ private slots:
         AppConfig::instance().setShowQuickSettings(true);
     }
 
+    void autoConnectServerKey_eachKindOfLocation()
+    {
+        QCOMPARE(AppConfig::autoConnectServerKey({}), QString());
+        QCOMPARE(AppConfig::autoConnectServerKey({.countryCode = QStringLiteral("US")}), QStringLiteral("US"));
+        QCOMPARE(AppConfig::autoConnectServerKey({.countryCode = QStringLiteral("US"),
+                                                  .city = QStringLiteral("New York")}),
+                 QStringLiteral("US|New York"));
+    }
+
+    void autoConnectServerLocation_readsEachKindOfKey()
+    {
+        const AppConfig::ServerLocation fastest = AppConfig::autoConnectServerLocation(QString());
+        QVERIFY(fastest.countryCode.isEmpty());
+        QVERIFY(fastest.city.isEmpty());
+
+        const AppConfig::ServerLocation country = AppConfig::autoConnectServerLocation(QStringLiteral("US"));
+        QCOMPARE(country.countryCode, QStringLiteral("US"));
+        QVERIFY(country.city.isEmpty());
+
+        const AppConfig::ServerLocation city = AppConfig::autoConnectServerLocation(QStringLiteral("US|New York"));
+        QCOMPARE(city.countryCode, QStringLiteral("US"));
+        QCOMPARE(city.city, QStringLiteral("New York"));
+    }
+
     void defaults_verboseLoggingIsFalse()
     {
         QCOMPARE(AppConfig::instance().verboseLogging(), false);

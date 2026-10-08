@@ -304,8 +304,8 @@ QString CountriesPage::bubbleStyle(const bool active)
 // ============================================================
 // Constructor
 // ============================================================
-CountriesPage::CountriesPage(VpnManager* manager, QWidget* parent)
-    : QWidget(parent), m_manager(manager),
+CountriesPage::CountriesPage(VpnManager* manager, QWidget* parent, const Mode mode)
+    : QWidget(parent), m_manager(manager), m_mode(mode),
       m_localCountryCode(GeoUtils::detectUserCountry())
 {
     auto* mainLayout = new QVBoxLayout(this);
@@ -757,16 +757,14 @@ void CountriesPage::buildWideLayout(QVBoxLayout* parent)
     wideLayout->addWidget(m_stackSplitter, 1);
 
     // Connect button
-    m_connectBtn = new QPushButton(tr("Connect to Selected"), m_wideWidget);
+    m_connectBtn = new QPushButton(noSelectionText(), m_wideWidget);
     m_connectBtn->setObjectName(QStringLiteral("primaryButton"));
     m_connectBtn->setEnabled(false);
     m_connectBtn->setCursor(Qt::PointingHandCursor);
     connect(m_connectBtn, &QPushButton::clicked, this, [this]()
     {
-        if (m_isFreeUser == false)
-        {
-            emit connectRequested(m_selectedCode, m_selectedCity);
-        }
+        if (m_mode == Mode::Connect && m_isFreeUser == true) return;
+        requestLocation(m_selectedCode, m_selectedCity);
     });
     wideLayout->addWidget(m_connectBtn);
 
@@ -798,7 +796,7 @@ void CountriesPage::buildNarrowLayout(QVBoxLayout* parent)
     narrowOuterLayout->addWidget(m_narrowScroll, 1);
 
     // Connect button for narrow mode
-    auto* narrowConnectBtn = new QPushButton(tr("Connect to Selected"), m_narrowWidget);
+    auto* narrowConnectBtn = new QPushButton(noSelectionText(), m_narrowWidget);
     narrowConnectBtn->setObjectName(QStringLiteral("primaryButton"));
     narrowConnectBtn->setEnabled(false);
     narrowConnectBtn->setCursor(Qt::PointingHandCursor);
@@ -806,10 +804,8 @@ void CountriesPage::buildNarrowLayout(QVBoxLayout* parent)
     // (we keep them in sync manually)
     connect(narrowConnectBtn, &QPushButton::clicked, this, [this]()
     {
-        if (m_isFreeUser == false)
-        {
-            emit connectRequested(m_selectedCode, m_selectedCity);
-        }
+        if (m_mode == Mode::Connect && m_isFreeUser == true) return;
+        requestLocation(m_selectedCode, m_selectedCity);
     });
     // Store as the narrow connect button - we'll sync text/enabled with m_connectBtn
     narrowOuterLayout->addWidget(narrowConnectBtn);
@@ -920,6 +916,45 @@ void CountriesPage::refresh()
     m_manager->fetchCountries();
 }
 
+void CountriesPage::startChoosing(const QString& countryCode, const QString& city)
+{
+    m_initialCode = countryCode;
+    m_initialCity = city;
+    if (m_manager->countries().isEmpty() == true)
+    {
+        refresh();
+        return;
+    }
+    // From the main Countries page's last fetch: fetching again would also
+    // set that page back to the local country.
+    m_cityCache = m_manager->cities();
+    onCountriesReady(m_manager->countries());
+}
+
+void CountriesPage::requestLocation(const QString& countryCode, const QString& city)
+{
+    if (m_mode == Mode::Choose)
+    {
+        emit locationChosen(countryCode, city);
+        return;
+    }
+    emit connectRequested(countryCode, city);
+}
+
+QString CountriesPage::actionText(const QString& country, const QString& city) const
+{
+    if (m_mode == Mode::Choose)
+    {
+        return city.isEmpty() == true ? tr("Choose %1").arg(country) : tr("Choose %1, %2").arg(country, city);
+    }
+    return city.isEmpty() == true ? tr("Connect to %1").arg(country) : tr("Connect to %1, %2").arg(country, city);
+}
+
+QString CountriesPage::noSelectionText() const
+{
+    return m_mode == Mode::Choose ? tr("Choose a Location") : tr("Connect to Selected");
+}
+
 // ============================================================
 // onCountriesReady
 // ============================================================
@@ -938,22 +973,32 @@ void CountriesPage::onCountriesReady(const QMap<QString, QString>& countries)
 
     applyFilter();
 
-    // Auto-select local country if detected
-    if (m_localCountryCode.isEmpty() == false
-        && m_narrowMode == false &&
-        m_countriesList != nullptr)
+    // Select the location being chosen from (see startChoosing()), or else
+    // the local country if detected.
+    const QString preferredCode = m_initialCode.isEmpty() == true ? m_localCountryCode : m_initialCode;
+    bool selected = false;
+    if (preferredCode.isEmpty() == false && m_narrowMode == false && m_countriesList != nullptr)
     {
         for (int i = 0; i < m_countriesList->count(); ++i)
         {
-            auto* item = m_countriesList->item(i);
+            QListWidgetItem* item = m_countriesList->item(i);
             if (item != nullptr && item->data(Qt::UserRole).toString().compare(
-                    m_localCountryCode, Qt::CaseInsensitive) == 0)
+                    preferredCode, Qt::CaseInsensitive) == 0)
             {
                 m_countriesList->setCurrentItem(item);
+                m_countriesList->scrollToItem(item);
+                selected = true;
                 onWideCountrySelected(item);
                 break;
             }
         }
+    }
+    // The city waits for the country's cities (see onCitiesReady()), unless
+    // the country is not there to select.
+    if (selected == false || m_initialCity.isEmpty() == true)
+    {
+        m_initialCode.clear();
+        m_initialCity.clear();
     }
 }
 
@@ -999,7 +1044,7 @@ void CountriesPage::applyFilter()
                 if (m_narrowConnectBtn != nullptr)
                 {
                     m_narrowConnectBtn->setEnabled(false);
-                    m_narrowConnectBtn->setText(tr("Connect to Selected"));
+                    m_narrowConnectBtn->setText(noSelectionText());
                 }
             }
         }
@@ -1025,7 +1070,7 @@ void CountriesPage::applyFilter()
         if (m_connectBtn != nullptr)
         {
             m_connectBtn->setEnabled(false);
-            m_connectBtn->setText(tr("Connect to Selected"));
+            m_connectBtn->setText(noSelectionText());
         }
         updateConnectBtnLockState();
         return;
@@ -1067,11 +1112,11 @@ void CountriesPage::applyFilter()
             m_connectBtn->setEnabled(false);
             if (m_selectedCountry.isEmpty() == false)
             {
-                m_connectBtn->setText(tr("Connect to %1").arg(m_selectedCountry));
+                m_connectBtn->setText(actionText(m_selectedCountry));
             }
             else
             {
-                m_connectBtn->setText(tr("Connect to Selected"));
+                m_connectBtn->setText(noSelectionText());
             }
         }
         updateConnectBtnLockState();
@@ -1226,7 +1271,8 @@ void CountriesPage::updateConnectBtnLockState() const
         btn->setCursor(Qt::PointingHandCursor);
     };
 
-    if (m_isFreeUser)
+    // Picking a location connects to nothing, so choose mode is for any account.
+    if (m_isFreeUser == true && m_mode == Mode::Connect)
     {
         applyLock(m_connectBtn);
         applyLock(m_narrowConnectBtn);
@@ -1469,6 +1515,24 @@ void CountriesPage::onCitiesReady(const QString& code,
 
             addWideCityItem(city, features);
         }
+
+        // The city being chosen from (see startChoosing()).
+        if (m_initialCity.isEmpty() == false && code.compare(m_initialCode, Qt::CaseInsensitive) == 0)
+        {
+            for (int i = 0; i < m_citiesList->count(); ++i)
+            {
+                QListWidgetItem* item = m_citiesList->item(i);
+                if (item->data(Qt::UserRole).toString().compare(m_initialCity, Qt::CaseInsensitive) == 0)
+                {
+                    m_citiesList->setCurrentItem(item);
+                    m_citiesList->scrollToItem(item);
+                    onWideCitySelected(item);
+                    break;
+                }
+            }
+            m_initialCode.clear();
+            m_initialCity.clear();
+        }
     }
 
     //  Narrow mode: fill the accordion for this country
@@ -1645,13 +1709,13 @@ void CountriesPage::addNarrowCityItem(QVBoxLayout* layout, const QString& city,
     }
 
     // Connect button
-    QPushButton* connectBtn = new QPushButton(tr("Connect"), row);
+    QPushButton* connectBtn = new QPushButton(m_mode == Mode::Choose ? tr("Choose") : tr("Connect"), row);
     connectBtn->setObjectName(QStringLiteral("secondaryButton"));
     connectBtn->setFixedHeight(26);
     connectBtn->setCursor(Qt::PointingHandCursor);
     connect(connectBtn, &QPushButton::clicked, this, [this, code, city]()
     {
-        emit connectRequested(code, city);
+        requestLocation(code, city);
     });
     hbox->addWidget(connectBtn, 0, Qt::AlignVCenter);
 
@@ -1696,7 +1760,7 @@ void CountriesPage::onWideCountrySelected(const QListWidgetItem* item)
     if (m_connectBtn != nullptr)
     {
         m_connectBtn->setEnabled(!m_selectedCode.isEmpty());
-        m_connectBtn->setText(tr("Connect to %1").arg(m_selectedCountry));
+        m_connectBtn->setText(actionText(m_selectedCountry));
     }
 
     if (m_selectedCode.isEmpty()) return;
@@ -1728,13 +1792,11 @@ void CountriesPage::onWideCitySelected(const QListWidgetItem* item)
 
     if (m_selectedCity.isEmpty())
     {
-        m_connectBtn->setText(tr("Connect to %1").arg(m_selectedCountry));
+        m_connectBtn->setText(actionText(m_selectedCountry));
     }
     else
     {
-        m_connectBtn->setText(tr("Connect to %1, %2")
-                                  .arg(m_selectedCountry,
-                                       GeoUtils::cityWithRegion(m_selectedCode, m_selectedCity)));
+        m_connectBtn->setText(actionText(m_selectedCountry, GeoUtils::cityWithRegion(m_selectedCode, m_selectedCity)));
     }
     updateConnectBtnLockState();
 }
@@ -1787,7 +1849,7 @@ void CountriesPage::toggleAccordion(const QString& code)
         if (m_narrowConnectBtn != nullptr)
         {
             m_narrowConnectBtn->setEnabled(true);
-            m_narrowConnectBtn->setText(tr("Connect to %1").arg(m_selectedCountry));
+            m_narrowConnectBtn->setText(actionText(m_selectedCountry));
         }
         updateConnectBtnLockState();
 

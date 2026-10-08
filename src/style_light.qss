@@ -295,6 +295,25 @@ QPushButton#dangerButton:disabled {
     border-color: #c8c8d8;
 }
 
+/*  A Settings action that is not destructive (Restore, the auto-connect
+    server): the Clear buttons' shape, in the accent color.  */
+QPushButton#accentButton {
+    background-color: transparent;
+    color: #6d4aff;
+    border: 1px solid #6d4aff;
+    border-radius: 6px;
+    padding: 10px 24px;
+    font-weight: bold;
+}
+QPushButton#accentButton:hover {
+    background-color: rgba(109, 74, 255, 0.10);
+}
+/*  Disabled, e.g. the auto-connect server for a free account.  */
+QPushButton#accentButton:disabled {
+    color: #9a9aa6;
+    border-color: #c8c8d8;
+}
+
 QPushButton#iconButton {
     background-color: transparent;
     border: none;
@@ -824,6 +843,7 @@ QuickSettingsPanel QFrame#plusDividerLine {
 /*  Its copies of the Settings page's buttons are as tall as its dropdowns,
     so every row lines up.  */
 QuickSettingsPanel QPushButton#dangerButton,
+QuickSettingsPanel QPushButton#accentButton,
 QuickSettingsPanel QPushButton#secondaryButton {
     padding: 6px 16px;
 }

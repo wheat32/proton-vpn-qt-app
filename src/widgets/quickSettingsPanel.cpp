@@ -46,6 +46,9 @@ constexpr int ROW_SPACING      = 12;
 // as a dropdown, which the button's padding matches too (style.qss).
 constexpr int COMBO_MAX_WIDTH  = 190;
 constexpr int NUMBER_HEIGHT    = 32;
+// A button copy's text is cut short past this, so that with its padding and
+// a flag the button leaves its label room.
+constexpr int BUTTON_TEXT_MAX_WIDTH = 110;
 
 void addSectionHeader(QWidget* parent, QVBoxLayout* layout, const QString& title)
 {
@@ -310,6 +313,7 @@ QWidget* QuickSettingsPanel::makeControl(QWidget* parent, const QuickSettingSour
             QPushButton* button = new QPushButton(original->text(), parent);
             button->setObjectName(original->objectName());
             button->setCursor(Qt::PointingHandCursor);
+            button->setIconSize(original->iconSize());
             connect(button, &QPushButton::clicked, this, [this, original]()
             {
                 original->click();
@@ -394,7 +398,19 @@ void QuickSettingsPanel::sync()
                 break;
 
             case Kind::Button:
+            {
+                // Its text and icon can change, as the auto-connect server's
+                // do; cut short to fit beside the label.
+                QPushButton* original = qobject_cast<QPushButton*>(source.control);
+                QPushButton* button = qobject_cast<QPushButton*>(row.control);
+                button->ensurePolished();
+                const QString text = button->fontMetrics().elidedText(original->text(), Qt::ElideRight,
+                                                                      BUTTON_TEXT_MAX_WIDTH);
+                button->setText(text);
+                button->setToolTip(text == original->text() ? QString() : original->text());
+                button->setIcon(original->icon());
                 break;
+            }
         }
 
         // Unavailable whenever the original is: disabled (while connecting,

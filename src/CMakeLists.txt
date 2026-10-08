@@ -140,6 +140,8 @@ set(SOURCES
         dialogs/reconnectDialog.cpp
         dialogs/serverPropertiesDialog.h
         dialogs/serverPropertiesDialog.cpp
+        dialogs/startupServerDialog.h
+        dialogs/startupServerDialog.cpp
         dialogs/updateAvailableDialog.h
         dialogs/updateAvailableDialog.cpp
         dialogs/whatsNewDialog.h

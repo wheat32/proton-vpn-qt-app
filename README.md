@@ -43,7 +43,7 @@ A Qt GUI front-end for the [Proton VPN Linux CLI](https://protonvpn.com/support/
 
 ### Settings
 **App tab**
-- **Launch on Startup** via XDG autostart, with optional **Auto-connect** (to the fastest server or one you choose) and **Start Hidden**
+- **Launch on Startup** via XDG autostart, with optional **Auto-connect** (to the fastest server, or *(Plus)* any country or city picked from the same list as the Countries page) and **Start Hidden**
 - **Close to Tray**
 - **Desktop Notifications** for connect/disconnect events, and **Check for Updates on Startup**
 - *(Plus)* **Recent Connections** count (0–20) and **Favorites**, each with a one-click clear

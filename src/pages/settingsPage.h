@@ -76,9 +76,10 @@ private:
     ToggleWithStatus* m_autoConnectToggle = nullptr;
     QWidget* m_autoConnectRow = nullptr;
 
-    // Auto-connect server dropdown (shown only when auto-connect is on)
-    QWidget*   m_autoConnectServerRow   = nullptr;
-    QComboBox* m_autoConnectServerCombo = nullptr;
+    // Auto-connect server, chosen in a StartupServerDialog (shown only when
+    // auto-connect is on)
+    QWidget*     m_autoConnectServerRow    = nullptr;
+    QPushButton* m_autoConnectServerButton = nullptr;
 
     // Desktop notifications
     ToggleWithStatus* m_notificationsToggle = nullptr;
@@ -179,7 +180,8 @@ private:
     static bool setAutoStart(bool enable, QString& errorOut);
     void updateAutoConnectRowVisibility() const;
     void updateAutoConnectServerRow() const;
-    void populateAutoConnectServerCombo() const;
+    // Shows the chosen server on its button.
+    void updateAutoConnectServerButton() const;
 
     void onSettingsReady(const QMap<QString, QString>& settings);
     void setLoading(bool loading);

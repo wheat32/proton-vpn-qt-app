@@ -30,6 +30,15 @@ public:
     // Empty string means "Fastest Server"; "CC" means fastest in country;
     // "CC|city" means a specific city.  Stored as-is.
     QString autoConnectServer() const;
+    // A location in autoConnectServer()'s format, and back: both parts empty
+    // for the fastest server anywhere, the city empty for a country's fastest.
+    struct ServerLocation
+    {
+        QString countryCode;
+        QString city;
+    };
+    static QString autoConnectServerKey(const ServerLocation& location);
+    static ServerLocation autoConnectServerLocation(const QString& key);
     bool notifications() const;
     int  recentConnectionsCount() const;
     bool startHidden() const;

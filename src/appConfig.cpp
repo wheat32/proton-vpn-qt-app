@@ -17,6 +17,9 @@ QString configFile() { return AppConfig::configDir() + QStringLiteral("/app.json
 
 constexpr int DEFAULT_RECENT_CONNECTIONS_COUNT = 5;
 
+// Between the country code and the city in auto_connect_server.
+constexpr QLatin1StringView AUTO_CONNECT_SERVER_SEPARATOR("|");
+
 // How the settings log writes a boolean.
 QString boolText(const bool value)
 {
@@ -225,6 +228,28 @@ bool AppConfig::save() const
 bool AppConfig::autoConnect() const { return m_autoConnect; }
 
 QString AppConfig::autoConnectServer() const { return m_autoConnectServer; }
+
+// static
+QString AppConfig::autoConnectServerKey(const ServerLocation& location)
+{
+    if (location.city.isEmpty() == true)
+    {
+        return location.countryCode;
+    }
+    return location.countryCode + AUTO_CONNECT_SERVER_SEPARATOR + location.city;
+}
+
+// static
+AppConfig::ServerLocation AppConfig::autoConnectServerLocation(const QString& key)
+{
+    const qsizetype separator = key.indexOf(AUTO_CONNECT_SERVER_SEPARATOR);
+    if (separator < 0)
+    {
+        return {.countryCode = key, .city = QString()};
+    }
+    return {.countryCode = key.left(separator),
+            .city = key.mid(separator + AUTO_CONNECT_SERVER_SEPARATOR.size())};
+}
 
 void AppConfig::setAutoConnect(const bool value)
 {

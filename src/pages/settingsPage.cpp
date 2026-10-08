@@ -13,9 +13,11 @@
 #include "../quickSettingIds.h"
 #include "../dialogs/natpmpcDialog.h"
 #include "../dialogs/reconnectDialog.h"
+#include "../dialogs/startupServerDialog.h"
 #include "../widgets/cliSettingControls.h"
 #include "../widgets/globeAnimationCombo.h"
 #include "../widgets/numberSpinner.h"
+#include "../widgets/pixmapCache.h"
 #include "../widgets/plusDivider.h"
 #include "../widgets/quickSettingsMenu.h"
 #include "../widgets/styledComboBox.h"
@@ -36,6 +38,7 @@
 #include <QJsonObject>
 #include <QMessageBox>
 #include <QMouseEvent>
+#include <QPainter>
 #include <QRadioButton>
 #include <QScrollArea>
 #include <QSpinBox>
@@ -72,9 +75,15 @@ constexpr int SECTION_HEADER_LEFT_MARGIN    = 12;
 constexpr int SECTION_HEADER_TOP_MARGIN     = 16;
 constexpr int SECTION_HEADER_BOT_MARGIN     = 4;
 constexpr int AUTOSTART_SUB_LEFT_MARGIN     = 32;
-constexpr int SERVER_COMBO_LEFT_MARGIN      = 48;
-constexpr int SERVER_COMBO_V_MARGIN         = 4;
-constexpr int SERVER_COMBO_MIN_WIDTH        = 180;
+constexpr int SERVER_ROW_LEFT_MARGIN        = 48;
+constexpr int SERVER_ROW_V_MARGIN           = 4;
+// The auto-connect server button: its flag (4:3, as flags are) with a gap
+// after it, the button's own spacing before the text being a pixel or two,
+// and its text cut short past this.
+constexpr int SERVER_FLAG_WIDTH             = 20;
+constexpr int SERVER_FLAG_HEIGHT            = 15;
+constexpr int SERVER_FLAG_GAP               = 6;
+constexpr int SERVER_BUTTON_TEXT_MAX_WIDTH  = 280;
 constexpr int WRAPPER_TOP_MARGIN            = 20;
 constexpr int REFRESH_BTN_HEIGHT            = 30;
 constexpr int SPINNER_INTERVAL_MS           = 200;
@@ -413,39 +422,37 @@ void SettingsPage::buildAppTab(QTabWidget* tabs)
                              .section = Section::App, .row = m_autoConnectRow, .control = m_autoConnectToggle});
             updateAutoConnectRowVisibility();
 
-            // Sub-sub-row: indented server dropdown (no divider – belongs to auto-connect)
+            // Sub-sub-row: indented server button (no divider – belongs to auto-connect)
             m_autoConnectServerRow = new QWidget(startupCard);
             QHBoxLayout* srvRl = new QHBoxLayout(m_autoConnectServerRow);
-            srvRl->setContentsMargins(SERVER_COMBO_LEFT_MARGIN, SERVER_COMBO_V_MARGIN,
+            srvRl->setContentsMargins(SERVER_ROW_LEFT_MARGIN, SERVER_ROW_V_MARGIN,
                                       SETTING_ROW_H_MARGIN, SETTING_ROW_V_MARGIN);
             srvRl->setSpacing(SETTING_ROW_SPACING);
             srvRl->addWidget(makeTextCol(m_autoConnectServerRow,
                                          tr("Server"),
                                          tr("Choose which server to connect to on startup.")), 1);
-            m_autoConnectServerCombo = new StyledComboBox(m_autoConnectServerRow);
-            m_autoConnectServerCombo->setMinimumWidth(SERVER_COMBO_MIN_WIDTH);
-            populateAutoConnectServerCombo();
-            connect(m_autoConnectServerCombo, &QComboBox::currentIndexChanged, this, [this](const int idx)
+            m_autoConnectServerButton = new QPushButton(m_autoConnectServerRow);
+            m_autoConnectServerButton->setObjectName(QStringLiteral("accentButton"));
+            m_autoConnectServerButton->setCursor(Qt::PointingHandCursor);
+            m_autoConnectServerButton->setIconSize(QSize(SERVER_FLAG_WIDTH + SERVER_FLAG_GAP, SERVER_FLAG_HEIGHT));
+            updateAutoConnectServerButton();
+            connect(m_autoConnectServerButton, &QPushButton::clicked, this, [this]()
             {
-                const QString val = m_autoConnectServerCombo->itemData(idx).toString();
-                AppConfig::instance().setAutoConnectServer(val);
-            });
-            // Keep the combo up-to-date when favorites change.
-            connect(&FavoritesManager::instance(), &FavoritesManager::changed, this, [this]()
-            {
-                populateAutoConnectServerCombo();
-                updateAutoConnectServerRow();
+                StartupServerDialog dialog(m_manager, AppConfig::instance().autoConnectServer(), window());
+                if (dialog.exec() != QDialog::Accepted) return;
+                AppConfig::instance().setAutoConnectServer(dialog.serverKey());
+                updateAutoConnectServerButton();
             });
             // Show/hide when auto-connect toggle changes.
             connect(m_autoConnectToggle, &ToggleWithStatus::toggled, this, [this](bool)
             {
                 updateAutoConnectServerRow();
             });
-            srvRl->addWidget(m_autoConnectServerCombo);
+            srvRl->addWidget(m_autoConnectServerButton);
             startupLayout->addWidget(m_autoConnectServerRow); // direct add – no divider above it
             addQuickSetting({.id = QuickSettingIds::AUTO_CONNECT_SERVER, .label = tr("Auto-connect Server"),
-                             .section = Section::App, .kind = Kind::Combo, .row = m_autoConnectServerRow,
-                             .control = m_autoConnectServerCombo});
+                             .section = Section::App, .kind = Kind::Button, .row = m_autoConnectServerRow,
+                             .control = m_autoConnectServerButton, .plusOnly = true});
             updateAutoConnectServerRow();
         }
 
@@ -919,7 +926,7 @@ void SettingsPage::buildAppearanceTab(QTabWidget* tabs)
                                             tr("Default Quick Settings"),
                                             tr("Put back the quick settings the app starts with."));
             QPushButton* restoreBtn = new QPushButton(tr("Restore"), row);
-            restoreBtn->setObjectName(QStringLiteral("secondaryButton"));
+            restoreBtn->setObjectName(QStringLiteral("accentButton"));
             restoreBtn->setCursor(Qt::PointingHandCursor);
             connect(restoreBtn, &QPushButton::clicked, this, [this]()
             {
@@ -1504,39 +1511,32 @@ void SettingsPage::updateAutoConnectRowVisibility() const
     updateAutoConnectServerRow();
 }
 
-void SettingsPage::populateAutoConnectServerCombo() const
+void SettingsPage::updateAutoConnectServerButton() const
 {
-    if (m_autoConnectServerCombo == nullptr) return;
+    if (m_autoConnectServerButton == nullptr) return;
+    const QString key = AppConfig::instance().autoConnectServer();
+    const QString name = StartupServerDialog::displayName(key);
+    m_autoConnectServerButton->ensurePolished();
+    const QString shown = m_autoConnectServerButton->fontMetrics().elidedText(name, Qt::ElideRight,
+                                                                             SERVER_BUTTON_TEXT_MAX_WIDTH);
+    m_autoConnectServerButton->setText(shown);
 
-    const QString saved = AppConfig::instance().autoConnectServer();
-
-    const QSignalBlocker blocker(m_autoConnectServerCombo);
-    m_autoConnectServerCombo->clear();
-    m_autoConnectServerCombo->addItem(tr("Fastest Server"), QString());
-
-    const QList<FavoriteEntry> favs = FavoritesManager::instance().entries();
-    for (const FavoriteEntry& e : favs)
+    const QIcon flag = StartupServerDialog::icon(key);
+    if (flag.isNull() == true)
     {
-        const QString key = e.city.isEmpty()
-            ? e.countryCode
-            : e.countryCode + QStringLiteral("|") + e.city;
-        const QString display = e.city.isEmpty()
-            ? tr("%1 - Fastest").arg(e.countryName)
-            : tr("%1 - %2").arg(e.countryName, e.city);
-        m_autoConnectServerCombo->addItem(display, key);
+        m_autoConnectServerButton->setIcon(QIcon());
     }
-
-    // Restore saved selection (or stay on index 0 if not found).
-    int idx = 0;
-    for (int i = 1; i < m_autoConnectServerCombo->count(); ++i)
+    else
     {
-        if (m_autoConnectServerCombo->itemData(i).toString() == saved)
-        {
-            idx = i;
-            break;
-        }
+        // The flag at the left of a wider icon: the rest is the gap.
+        const qreal dpr = m_autoConnectServerButton->devicePixelRatioF();
+        QPixmap icon = blankPixmap(QSizeF(SERVER_FLAG_WIDTH + SERVER_FLAG_GAP, SERVER_FLAG_HEIGHT), dpr);
+        QPainter painter(&icon);
+        painter.drawPixmap(0, 0, flag.pixmap(QSize(SERVER_FLAG_WIDTH, SERVER_FLAG_HEIGHT), dpr));
+        painter.end();
+        m_autoConnectServerButton->setIcon(QIcon(icon));
     }
-    m_autoConnectServerCombo->setCurrentIndex(idx);
+    updateAutoConnectServerRow();
 }
 
 void SettingsPage::updateAutoConnectServerRow() const
@@ -1548,21 +1548,23 @@ void SettingsPage::updateAutoConnectServerRow() const
     const bool show          = autoStartOn && autoConnectOn;
     m_autoConnectServerRow->setVisible(show);
 
-    if (m_autoConnectServerCombo == nullptr) return;
+    if (m_autoConnectServerButton == nullptr) return;
 
-    const bool hasFavorites = FavoritesManager::instance().hasAnyEntries();
-    m_autoConnectServerRow->setEnabled(hasFavorites);
-    if (hasFavorites == false)
+    // Free plans connect wherever Proton chooses.
+    const bool isFree = m_manager->accountType() == AccountType::Free;
+    m_autoConnectServerButton->setEnabled(isFree == false);
+    const QString name = StartupServerDialog::displayName(AppConfig::instance().autoConnectServer());
+    QString tip;
+    if (isFree == true)
     {
-        const QString tip = tr("Add favorite servers to choose a specific server for auto-connect.");
-        m_autoConnectServerRow->setToolTip(tip);
-        m_autoConnectServerCombo->setToolTip(tip);
+        tip = tr("Free plans connect to a server chosen by Proton. Upgrade your plan to choose a server.");
     }
-    else
+    else if (m_autoConnectServerButton->text() != name)
     {
-        m_autoConnectServerRow->setToolTip(QString());
-        m_autoConnectServerCombo->setToolTip(QString());
+        // The name is cut short on the button.
+        tip = name;
     }
+    m_autoConnectServerRow->setToolTip(tip);
 }
 
 SettingsPage::SettingsPage(VpnManager* manager, NatPmpManager* natPmpManager, QWidget* parent)
@@ -1591,6 +1593,7 @@ SettingsPage::SettingsPage(VpnManager* manager, NatPmpManager* natPmpManager, QW
     connect(m_manager, &VpnManager::accountTypeReady, this, [this](AccountType)
     {
         updatePlusSectionState();
+        updateAutoConnectServerRow();
     });
     connect(m_manager, &VpnManager::cliVersionReady,  this, [this](const QString& v)
     {

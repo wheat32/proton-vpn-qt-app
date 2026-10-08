@@ -25,8 +25,22 @@ class CountriesPage : public QWidget
     Q_OBJECT
 
 public:
-    explicit CountriesPage(VpnManager* manager, QWidget* parent = nullptr);
+    // Connect: the Countries page, whose buttons connect. Choose: the same
+    // list in a dialog (the auto-connect server chooser), whose buttons pick
+    // the location instead (see locationChosen()), for any account.
+    enum class Mode
+    {
+        Connect,
+        Choose,
+    };
+
+    explicit CountriesPage(VpnManager* manager, QWidget* parent = nullptr, Mode mode = Mode::Connect);
     void refresh();
+    // Choose mode: shows the countries the main Countries page last fetched
+    // (fetching them when it has not yet), with `countryCode` and `city`
+    // selected, or the local country when `countryCode` is empty. For a page
+    // that is on screen, so it has its layout for its width.
+    void startChoosing(const QString& countryCode, const QString& city);
     // Set while the page sits beside the home page (MainWindow's split view):
     // it is then styled and spaced like the home page's quick settings, with
     // the countries as a grid of cards above their cities.
@@ -34,6 +48,9 @@ public:
 
 signals:
     void connectRequested(const QString& countryCode, const QString& city);
+    // Choose mode's counterpart of connectRequested(); `city` is empty for
+    // the country's fastest server.
+    void locationChosen(const QString& countryCode, const QString& city);
 
 protected:
     void resizeEvent(QResizeEvent* event) override;
@@ -42,7 +59,12 @@ protected:
 
 private:
     VpnManager* m_manager;
+    Mode        m_mode;
     QString     m_localCountryCode;
+    // Selected once the countries, and then the country's cities, are in
+    // (see startChoosing()).
+    QString     m_initialCode;
+    QString     m_initialCity;
 
     QMap<QString, QString> m_allCountries; // name -> code
     QMap<QString, QList<QPair<QString, QString>>> m_cityCache; // code -> cities
@@ -141,6 +163,13 @@ private:
     // Updates both connect buttons to show a lock when the account is Free,
     // or restores normal styling for paid accounts.
     void updateConnectBtnLockState() const;
+
+    // Connects to the location, or in choose mode picks it.
+    void requestLocation(const QString& countryCode, const QString& city);
+    // The connect buttons' text for a selected country, or a city in it.
+    [[nodiscard]] QString actionText(const QString& country, const QString& city = QString()) const;
+    // And with nothing selected.
+    [[nodiscard]] QString noSelectionText() const;
 
     // Shows the "Disable Port Forwarding?" confirmation dialog.
     // bodyText is the message shown; onConfirm is called if the user confirms.
