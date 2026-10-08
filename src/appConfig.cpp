@@ -137,6 +137,8 @@ void AppConfig::load()
     m_lastSeenVersion = obj.value(QStringLiteral("last_seen_version")).toString();
     m_checkForUpdates = obj.value(QStringLiteral("check_for_updates")).toBool(true);
     m_logToFile = obj.value(QStringLiteral("log_to_file")).toBool(false);
+    m_verboseLogging = obj.value(QStringLiteral("verbose_logging")).toBool(false);
+    VerboseLog::setSetting(m_verboseLogging);
     // Clamped on read too: the file is user-editable, and a ratio outside the
     // range would squeeze one side of the split view to nothing.
     m_splitViewCountriesRatio = std::clamp(
@@ -179,6 +181,7 @@ void AppConfig::logLoadedConfig() const
     DBG_SETTINGS(QStringLiteral("  last_seen_version        = ") + m_lastSeenVersion);
     DBG_SETTINGS(QStringLiteral("  check_for_updates        = ") + boolText(m_checkForUpdates));
     DBG_SETTINGS(QStringLiteral("  log_to_file              = ") + boolText(m_logToFile));
+    DBG_SETTINGS(QStringLiteral("  verbose_logging          = ") + boolText(m_verboseLogging));
     DBG_SETTINGS(QStringLiteral("  split_view_countries_ratio = ") + QString::number(m_splitViewCountriesRatio));
     DBG_SETTINGS(QStringLiteral("  theme                    = ") + themeName(m_theme));
     DBG_SETTINGS(QStringLiteral("  globe_animation          = ") + globeAnimationName(m_globeAnimation));
@@ -209,6 +212,7 @@ bool AppConfig::save() const
     }
     obj[QStringLiteral("check_for_updates")] = m_checkForUpdates;
     obj[QStringLiteral("log_to_file")] = m_logToFile;
+    obj[QStringLiteral("verbose_logging")] = m_verboseLogging;
     obj[QStringLiteral("split_view_countries_ratio")] = m_splitViewCountriesRatio;
     obj[QStringLiteral("globe_animation")] = globeAnimationName(m_globeAnimation);
     obj[QStringLiteral("globe_pause_when_unfocused")] = m_globePauseWhenUnfocused;
@@ -426,6 +430,17 @@ void AppConfig::setLogToFile(const bool value)
     FileLogger::instance().setEnabled(value);
 }
 
+bool AppConfig::verboseLogging() const { return m_verboseLogging; }
+
+void AppConfig::setVerboseLogging(const bool value)
+{
+    if (m_verboseLogging == value) return;
+    DBG_SETTINGS(QStringLiteral("Setting changed: verbose_logging = ") + boolText(value));
+    m_verboseLogging = value;
+    (void)save();
+    VerboseLog::setSetting(value);
+}
+
 void AppConfig::resetToDefaults()
 {
     DBG_SETTINGS(QStringLiteral("AppConfig::resetToDefaults() - deleting config file and resetting all values"));
@@ -450,9 +465,11 @@ void AppConfig::resetToDefaults()
     m_lastSeenVersion        = QString();
     m_checkForUpdates        = true;
     m_logToFile              = false;
+    m_verboseLogging         = false;
     m_splitViewCountriesRatio = SPLIT_RATIO_DEFAULT;
     m_globeAnimation          = GlobeAnimation::Auto;
     m_globePauseWhenUnfocused = false;
     FileLogger::instance().setEnabled(false);
+    VerboseLog::setSetting(false);
 }
 

@@ -22,6 +22,7 @@ inline const QString CLEAR_RECENT_CONNECTIONS = QStringLiteral("clear-recent-con
 inline const QString ENABLE_FAVORITES         = QStringLiteral("enable-favorites");
 inline const QString CLEAR_FAVORITES          = QStringLiteral("clear-favorites");
 inline const QString LOG_TO_FILE              = QStringLiteral("log-to-file");
+inline const QString VERBOSE_LOGGING          = QStringLiteral("verbose-logging");
 
 // Appearance tab
 inline const QString THEME                    = QStringLiteral("theme");

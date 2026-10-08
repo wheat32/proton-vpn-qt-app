@@ -445,6 +445,11 @@ DebugPage::DebugPage(QWidget* parent)
         QStringLiteral("false"),
         []() { AppConfig::instance().setLogToFile(false); });
 
+    m_valVerboseLogging = addRow(
+        QStringLiteral("verbose_logging"),
+        QStringLiteral("false"),
+        []() { AppConfig::instance().setVerboseLogging(false); });
+
     layout->addWidget(gridWidget);
 
 #ifdef QT_DEBUG
@@ -538,6 +543,7 @@ void DebugPage::refreshValues() const
     m_valLastSeenVersion->setText(lsv.isEmpty() ? QStringLiteral("(empty)") : lsv);
     m_valCheckForUpdates->setText(boolStr(cfg.checkForUpdates()));
     m_valLogToFile->setText(boolStr(cfg.logToFile()));
+    m_valVerboseLogging->setText(boolStr(cfg.verboseLogging()));
 }
 
 void DebugPage::setLeftPadding(int px)

@@ -97,6 +97,7 @@ signals:
 protected:
     bool eventFilter(QObject* obj, QEvent* ev) override;
     void onRowClicked(QListWidgetItem* item) override;
+    [[nodiscard]] RowLocation rowLocation(const QListWidgetItem* item) const override;
 
 private:
     void updateHeader() const;
@@ -130,6 +131,7 @@ signals:
 protected:
     bool eventFilter(QObject* obj, QEvent* ev) override;
     void onRowClicked(QListWidgetItem* item) override;
+    [[nodiscard]] RowLocation rowLocation(const QListWidgetItem* item) const override;
 };
 
 // ---------------------------------------------------------------------------
@@ -150,6 +152,7 @@ signals:
 protected:
     bool eventFilter(QObject* obj, QEvent* ev) override;
     void onRowClicked(QListWidgetItem* item) override;
+    [[nodiscard]] RowLocation rowLocation(const QListWidgetItem* item) const override;
 };
 
 

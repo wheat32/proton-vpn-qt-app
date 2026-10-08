@@ -15,8 +15,11 @@ QWidget#sidebar {
     padding: 0;
 }
 
+/* Painted here, not by the Qt style: Breeze draws a frame line as a faint
+   separator and Fusion (the AppImage's style) at full strength. */
 QFrame#sidebarDivider {
-    color: #3a3a55;
+    border: none;
+    background-color: #202036;
 }
 
 QToolButton#navButton {
@@ -100,6 +103,19 @@ QLineEdit#inputField {
     selection-background-color: #6d4aff;
 }
 QLineEdit#inputField:focus {
+    border-color: #6d4aff;
+}
+/*  The field of a QInputDialog (Custom DNS from the quick settings), drawn
+    like the app's own fields rather than by the Qt style.  */
+QInputDialog QLineEdit {
+    background-color: #1a1a2e;
+    border: 1px solid #3a3a55;
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: #eaeaea;
+    selection-background-color: #6d4aff;
+}
+QInputDialog QLineEdit:focus {
     border-color: #6d4aff;
 }
 
@@ -404,6 +420,28 @@ QScrollBar::handle:vertical:hover {
 }
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     height: 0;
+}
+/*  Horizontal ones the same way (the Properties window's server table), and
+    no stippled page area under either: Fusion, the AppImage's style, draws
+    one where these rules leave it.  */
+QScrollBar:horizontal {
+    background: #1a1a2e;
+    height: 8px;
+    border-radius: 4px;
+}
+QScrollBar::handle:horizontal {
+    background: #3a3a55;
+    border-radius: 4px;
+    min-width: 30px;
+}
+QScrollBar::handle:horizontal:hover {
+    background: #6d4aff;
+}
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0;
+}
+QScrollBar::add-page, QScrollBar::sub-page {
+    background: none;
 }
 
 QFrame#numberSpinner {
@@ -868,4 +906,58 @@ QListWidget#countryGrid::item:selected {
     background-color: #3a2d7a;
     border-color: #6d4aff;
     color: white;
+}
+
+/*  ==========================================================================
+    Tooltips and the Properties window's server table: drawn here so they
+    look the same under every Qt style, Fusion (the AppImage's) included.
+    ========================================================================== */
+
+QToolTip {
+    background-color: #25253d;
+    color: #eaeaea;
+    border: 1px solid #3a3a55;
+    padding: 4px 6px;
+}
+
+QTableWidget#serverTable {
+    background-color: #25253d;
+    alternate-background-color: #2a2a45;
+    color: #eaeaea;
+    border: 1px solid #3a3a55;
+    border-radius: 6px;
+    selection-background-color: #3a335d;
+    selection-color: #eaeaea;
+    outline: none;
+}
+QTableWidget#serverTable::item {
+    padding: 0px 8px;
+    border: none;
+}
+QTableWidget#serverTable QHeaderView {
+    background-color: transparent;
+}
+QTableWidget#serverTable QHeaderView::section {
+    background-color: #1f1f35;
+    color: #9999bb;
+    border: none;
+    border-right: 1px solid #3a3a55;
+    border-bottom: 1px solid #3a3a55;
+    /* Room at the right for the sort arrow SortArrowHeader draws. */
+    padding: 6px 22px 6px 8px;
+    font-weight: bold;
+}
+QTableWidget#serverTable QHeaderView::section:last {
+    border-right: none;
+}
+/* Where the two scroll bars meet: left to the table's own rounded frame, as
+   Breeze does, not a panel drawn over it, as Fusion (the AppImage's style)
+   does. */
+QTableWidget#serverTable::corner {
+    background: transparent;
+    border: none;
+}
+QTableWidget#serverTable QTableCornerButton::section {
+    background-color: #1f1f35;
+    border: none;
 }

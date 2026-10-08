@@ -113,6 +113,12 @@ add_qt_test(tst_cliSettings
     ../cli/cliTable.h
 )
 
+#  ServerList (header-only)
+add_qt_test(tst_serverList
+    tst_serverList.cpp
+    ../cli/serverList.h
+)
+
 #  CliTable (header-only)
 add_qt_test(tst_cliTable
     tst_cliTable.cpp

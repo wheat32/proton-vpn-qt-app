@@ -722,6 +722,24 @@ void SettingsPage::buildAppTab(QTabWidget* tabs)
                              .section = Section::App, .row = row, .control = logToFileToggle});
         }
 
+        {
+            auto [row, rl] = makeSettingRow(loggingCard,
+                                            tr("Verbose Logging"),
+                                            tr("Print extra detail to the log, such as every server and "
+                                               "node a location's Properties lists. Launching with "
+                                               "<code>--verbose</code> turns it on for one run."));
+            ToggleWithStatus* verboseToggle = new ToggleWithStatus(row);
+            verboseToggle->setOn(AppConfig::instance().verboseLogging(), false);
+            connect(verboseToggle, &ToggleWithStatus::toggled, this, [](const bool on)
+            {
+                AppConfig::instance().setVerboseLogging(on);
+            });
+            rl->addWidget(verboseToggle);
+            loggingLayout->addWidget(row);
+            addQuickSetting({.id = QuickSettingIds::VERBOSE_LOGGING, .label = tr("Verbose Logging"),
+                             .section = Section::App, .row = row, .control = verboseToggle});
+        }
+
         //  Section: About
         addHeader(tr("About"));
         auto [aboutCard, aboutLayout] = makeAppCard();

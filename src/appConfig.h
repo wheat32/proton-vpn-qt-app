@@ -58,6 +58,8 @@ public:
     QString lastSeenVersion() const;
     bool checkForUpdates() const;
     bool logToFile() const;
+    // Verbose output (see VerboseLog in debug.h).
+    bool verboseLogging() const;
     // Share of the width (0-1) the Countries list takes in the split view.
     double splitViewCountriesRatio() const;
 
@@ -80,6 +82,7 @@ public:
     void setLastSeenVersion(const QString& value);
     void setCheckForUpdates(bool value);
     void setLogToFile(bool value);
+    void setVerboseLogging(bool value);
     // Clamped to [SPLIT_RATIO_MIN, SPLIT_RATIO_MAX].
     void setSplitViewCountriesRatio(double value);
 
@@ -124,4 +127,5 @@ private:
     QString m_lastSeenVersion;
     bool m_checkForUpdates = true;
     bool m_logToFile = false;
+    bool m_verboseLogging = false;
 };

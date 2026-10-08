@@ -2,6 +2,7 @@
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include "appConfig.h"
+#include "debug.h"
 #include "quickSettingIds.h"
 
 // AppConfig is a singleton, so all test slots share the same instance.
@@ -217,6 +218,32 @@ private slots:
         QCOMPARE(AppConfig::instance().showQuickSettings(), false);
         // Restore
         AppConfig::instance().setShowQuickSettings(true);
+    }
+
+    void defaults_verboseLoggingIsFalse()
+    {
+        QCOMPARE(AppConfig::instance().verboseLogging(), false);
+        QCOMPARE(VerboseLog::isOn(), false);
+    }
+
+    void setVerboseLogging_storesValueAndTurnsVerboseOutputOn()
+    {
+        AppConfig::instance().setVerboseLogging(true);
+        QCOMPARE(AppConfig::instance().verboseLogging(), true);
+        QCOMPARE(VerboseLog::isOn(), true);
+        // Restore
+        AppConfig::instance().setVerboseLogging(false);
+        QCOMPARE(VerboseLog::isOn(), false);
+    }
+
+    void verboseLog_launchOption_isOnWhateverTheSetting()
+    {
+        VerboseLog::setLaunchOption(true);
+        QCOMPARE(VerboseLog::isOn(), true);
+        QCOMPARE(AppConfig::instance().verboseLogging(), false);
+        // Restore
+        VerboseLog::setLaunchOption(false);
+        QCOMPARE(VerboseLog::isOn(), false);
     }
 
     void defaults_quickSettingsAreTheDefaults()

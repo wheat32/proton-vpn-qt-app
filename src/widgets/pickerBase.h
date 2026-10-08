@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QAbstractButton>
+#include <QContextMenuEvent>
 #include <QCursor>
 #include <QEvent>
 #include <QFrame>
@@ -74,6 +75,22 @@ public:
             }
         }
         setFixedWidth(c == true ? COLLAPSED_PICKER_WIDTH : EXPANDED_PICKER_WIDTH);
+    }
+
+signals:
+    // A row that stands for a location was right-clicked. The popup stays
+    // open: its menu opens over it (see popupWindow()). `city` is empty for
+    // the country's fastest server.
+    void rowContextMenuRequested(const QString& countryCode, const QString& countryName,
+                                 const QString& city, const QPoint& globalPos);
+
+public:
+    // The dropdown's popup window, for a row's menu to open over (as its
+    // child) and to close before a window the menu leads to, which cannot
+    // take input under an open popup.
+    [[nodiscard]] QWidget* popupWindow() const
+    {
+        return m_popup;
     }
 
     // The picker's height when expanded, also while it is collapsed, so the
@@ -294,11 +311,30 @@ protected:
             {
                 m_chevron->setText(QStringLiteral("▾"));
             }
+            followLayout(false);
+            m_rowPressed = false;
+            return false;
+        }
+        if (obj == m_popup && ev->type() == QEvent::Show)
+        {
+            followLayout(true);
             return false;
         }
 
-        // Header click -> toggle
-        if (obj->isWidgetType() && ev->type() == QEvent::MouseButtonRelease)
+        // The picker, or a widget it sits in, moved or changed size while the
+        // popup is open (say a favorite added from a row's menu brought the
+        // Favorites dropdown in): the popup goes back under the picker.
+        if ((ev->type() == QEvent::Move || ev->type() == QEvent::Resize) && m_popup->isVisible() == true
+            && obj->isWidgetType() == true
+            && (obj == this || static_cast<const QWidget*>(obj)->isAncestorOf(this) == true))
+        {
+            resizeList();
+            return false;
+        }
+
+        // Header left-click -> toggle
+        if (obj->isWidgetType() && ev->type() == QEvent::MouseButtonRelease
+            && static_cast<QMouseEvent*>(ev)->button() == Qt::LeftButton)
         {
             const QWidget* w = qobject_cast<QWidget*>(obj);
             if (w != nullptr && w->objectName() == QLatin1String("locationPickerHeader"))
@@ -349,8 +385,34 @@ protected:
                     }
                     return false;
                 }
-                if (ev->type() == QEvent::MouseButtonRelease)
+                if (ev->type() == QEvent::ContextMenu)
                 {
+                    const QPoint globalPos = static_cast<QContextMenuEvent*>(ev)->globalPos();
+                    const QListWidgetItem* item = m_list->itemAt(m_list->viewport()->mapFromGlobal(globalPos));
+                    const RowLocation location = item != nullptr ? rowLocation(item) : RowLocation();
+                    if (location.countryCode.isEmpty() == false)
+                    {
+                        emit rowContextMenuRequested(location.countryCode, location.countryName,
+                                                     location.city, globalPos);
+                    }
+                    return true;
+                }
+                // A row is picked by a left-click on it, the press and the
+                // release: a right-click is for the menu above, and on a row
+                // without one does nothing, and a release alone, such as that
+                // of a click that closed a row's menu, picks nothing either.
+                if (ev->type() == QEvent::MouseButtonPress
+                    && static_cast<QMouseEvent*>(ev)->button() == Qt::LeftButton)
+                {
+                    m_rowPressed = true;
+                    return false;
+                }
+                if (ev->type() == QEvent::MouseButtonRelease
+                    && static_cast<QMouseEvent*>(ev)->button() == Qt::LeftButton)
+                {
+                    const bool pressed = m_rowPressed;
+                    m_rowPressed = false;
+                    if (pressed == false) return true;
                     const QPoint vp = m_list->viewport()->mapFromGlobal(
                         w->mapToGlobal(static_cast<QMouseEvent*>(ev)->pos()));
                     QListWidgetItem* item = m_list->itemAt(vp);
@@ -367,6 +429,17 @@ protected:
 
     // Subclasses implement this to react to a row click.
     virtual void onRowClicked(QListWidgetItem* item) = 0;
+
+    // The location a row stands for, for its right-click menu: a country
+    // code and name, and a city, empty for the country's fastest server. An
+    // empty code for a row that is not a location, such as an action.
+    struct RowLocation
+    {
+        QString countryCode;
+        QString countryName;
+        QString city;
+    };
+    [[nodiscard]] virtual RowLocation rowLocation(const QListWidgetItem* item) const = 0;
 
     // Moves the hover highlight to `row` (nullptr clears it).
     //
@@ -418,6 +491,26 @@ protected:
     bool         m_collapsed  = false;
 
 private:
+    // While the popup is open, the picker and every widget it sits in report
+    // their moves and resizes (see handleCommonEvents()).
+    void followLayout(const bool follow)
+    {
+        for (QWidget* w = this; w != nullptr; w = w->parentWidget())
+        {
+            if (follow == true)
+            {
+                w->installEventFilter(this);
+            }
+            else
+            {
+                w->removeEventFilter(this);
+            }
+            if (w->isWindow()) break;
+        }
+    }
+
+    // A left press on a row since the last release (see handleCommonEvents()).
+    bool m_rowPressed = false;
     // QPointer, not a raw pointer: refresh()/populate() call m_list->clear(),
     // which destroys the row widgets - a raw pointer would be left dangling and
     // restyled on the next hover.

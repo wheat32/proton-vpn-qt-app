@@ -5,12 +5,14 @@
 #include "../uiHelpers.h"
 #include "../widgets/gripSplitter.h"
 #include "../widgets/pixmapCache.h"
+#include "../widgets/serverContextMenu.h"
 #include "../widgets/starButton.h"
 
 #include <algorithm>
 #include <ranges>
 #include <QDialog>
 #include <QEvent>
+#include <QMouseEvent>
 #include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -69,6 +71,11 @@ constexpr int    CARD_H           = 104;
 constexpr int    STAR_BADGE_SIZE  = 18;
 constexpr int    STAR_BADGE_INSET = 3;
 constexpr QColor STAR_BADGE_COLOR(0, 0, 0, 0x96);
+
+// The countries' and cities' list rows. Set rather than left to the Qt
+// style, which pads items differently: this is what Breeze gives them, and
+// Fusion (the AppImage's style) now matches.
+constexpr int LIST_ROW_HEIGHT = 41;
 
 // Default pane sizes: side by side, equal; stacked in the split view, as
 // shares of the height for the countries and for their cities.
@@ -642,6 +649,17 @@ bool CountriesPage::eventFilter(QObject* obj, QEvent* event)
     {
         updateCountryGridSize();
     }
+    // A right-click opens the location's menu and leaves the selection alone:
+    // a left-click selects, and the cities shown and the Connect button
+    // follow it, which a right-click selecting another row would leave behind.
+    const bool listViewport = obj == m_countriesList->viewport()
+                              || (m_citiesList != nullptr && obj == m_citiesList->viewport());
+    if (listViewport == true
+        && (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::MouseButtonDblClick)
+        && static_cast<const QMouseEvent*>(event)->button() == Qt::RightButton)
+    {
+        return true;
+    }
     return QWidget::eventFilter(obj, event);
 }
 
@@ -675,10 +693,23 @@ void CountriesPage::buildWideLayout(QVBoxLayout* parent)
     m_countriesList->setObjectName(QStringLiteral("serverList"));
     // Wide mode uses a composite icon (star + flag) so reserve enough width.
     m_countriesList->setIconSize(QSize(COUNTRY_ICON_W, COUNTRY_ICON_H));
-    // As a grid, its cards are sized to the viewport (see updateCountryGridSize()).
+    // As a grid, its cards are sized to the viewport (see updateCountryGridSize()),
+    // and a right-click selects none of them (see eventFilter()).
     m_countriesList->viewport()->installEventFilter(this);
     connect(m_countriesList, &QListWidget::itemClicked,
             this, &CountriesPage::onWideCountrySelected);
+    // Right-clicking a country, a list row or a card, offers to favorite its
+    // fastest server or show its properties.
+    m_countriesList->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_countriesList, &QWidget::customContextMenuRequested, this, [this](const QPoint& pos)
+    {
+        const QListWidgetItem* item = m_countriesList->itemAt(pos);
+        if (item == nullptr) return;
+        const QString code = item->data(Qt::UserRole).toString();
+        if (code.isEmpty() == true) return; // the loading message
+        ServerContextMenu::exec(m_manager, code, item->text(), QString(),
+                                m_countriesList->viewport()->mapToGlobal(pos), window());
+    });
     countriesLayout->addWidget(m_countriesList);
     m_listSplitter->addWidget(m_countriesPane);
 
@@ -698,8 +729,20 @@ void CountriesPage::buildWideLayout(QVBoxLayout* parent)
     // the star) along their right edge, which otherwise keep the width the
     // list had when they were added and can end up out of sight.
     m_citiesList->setResizeMode(QListView::Adjust);
+    // Keeps a right-click from selecting a row (see eventFilter()).
+    m_citiesList->viewport()->installEventFilter(this);
     connect(m_citiesList, &QListWidget::itemClicked,
             this, &CountriesPage::onWideCitySelected);
+    // The same for a city, or the country's fastest server.
+    m_citiesList->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_citiesList, &QWidget::customContextMenuRequested, this, [this](const QPoint& pos)
+    {
+        const QListWidgetItem* item = m_citiesList->itemAt(pos);
+        // Not the loading and empty-state messages.
+        if (item == nullptr || item->flags() == Qt::NoItemFlags || m_selectedCode.isEmpty() == true) return;
+        ServerContextMenu::exec(m_manager, m_selectedCode, m_selectedCountry, item->data(Qt::UserRole).toString(),
+                                m_citiesList->viewport()->mapToGlobal(pos), window());
+    });
     citiesLayout->addWidget(m_citiesList);
     m_listSplitter->addWidget(citiesWidget);
 
@@ -1233,6 +1276,7 @@ void CountriesPage::populateWide() const
         else
         {
             item->setIcon(makeCountryListIcon(code, isPinned));
+            item->setSizeHint(QSize(0, LIST_ROW_HEIGHT));
         }
 
         if (isPinned)
@@ -1330,6 +1374,11 @@ void CountriesPage::populateNarrow()
         {
             toggleAccordion(code);
         });
+        btn->setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(btn, &QWidget::customContextMenuRequested, this, [this, btn, code, displayName](const QPoint& pos)
+        {
+            ServerContextMenu::exec(m_manager, code, displayName, QString(), btn->mapToGlobal(pos), window());
+        });
 
         // Insert before the stretch
         m_narrowLayout->insertWidget(m_narrowLayout->count() - 1, container);
@@ -1410,6 +1459,7 @@ void CountriesPage::onCitiesReady(const QString& code,
         QFont f = m_citiesList->font(); f.setBold(true); f.setItalic(true);
         anyItem->setFont(f);
         anyItem->setBackground(QColor(0x6d, 0x4a, 0xff, 40));
+        anyItem->setSizeHint(QSize(0, LIST_ROW_HEIGHT));
         m_citiesList->addItem(anyItem);
 
         for (const auto& [city, features] : cities)
@@ -1527,35 +1577,9 @@ void CountriesPage::addWideCityItem(const QString& city, const QString& features
             0, Qt::AlignVCenter);
     }
 
-    // As tall as the countries' rows beside it; as a grid of cards above it,
-    // the countries have no rows to match.
-    int itemH = -1;
-    if (m_countriesList != nullptr && m_countriesList->count() > 0
-        && m_countriesList->viewMode() == QListView::ListMode)
-    {
-        itemH = m_countriesList->sizeHintForRow(0);
-    }
-
-    if (itemH <= 0 && m_citiesList != nullptr && m_citiesList->count() > 0)
-    {
-        itemH = m_citiesList->sizeHintForRow(0);
-    }
-
-    if (itemH <= 0)
-    {
-        if (m_countriesList != nullptr)
-        {
-            itemH = m_countriesList->fontMetrics().height() + 17;
-        }
-        else
-        {
-            itemH = 14 + 17;
-        }
-    }
-
     QListWidgetItem* item = new QListWidgetItem();
     item->setData(Qt::UserRole, city);
-    item->setSizeHint(QSize(0, itemH));
+    item->setSizeHint(QSize(0, LIST_ROW_HEIGHT));
     m_citiesList->addItem(item);
     m_citiesList->setItemWidget(item, row);
 }
@@ -1630,6 +1654,13 @@ void CountriesPage::addNarrowCityItem(QVBoxLayout* layout, const QString& city,
         emit connectRequested(code, city);
     });
     hbox->addWidget(connectBtn, 0, Qt::AlignVCenter);
+
+    row->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(row, &QWidget::customContextMenuRequested, this, [this, row, code, city](const QPoint& pos)
+    {
+        ServerContextMenu::exec(m_manager, code, GeoUtils::countryCodeToName(code), city,
+                                row->mapToGlobal(pos), window());
+    });
 
     layout->addWidget(row);
 

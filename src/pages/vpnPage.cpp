@@ -7,6 +7,7 @@
 #include "../motionPreference.h"
 #include "../themeManager.h"
 #include "../globe/countryCenters.h"
+#include "../widgets/serverContextMenu.h"
 #include "../widgets/svgBanner.h"
 #include "../widgets/starButton.h"
 #include "../widgets/styleUtils.h"
@@ -503,6 +504,18 @@ void LocationPicker::onRowClicked(QListWidgetItem* item)
     emit selectionChanged(m_selectedCity);
 }
 
+PickerBase::RowLocation LocationPicker::rowLocation(const QListWidgetItem* item) const
+{
+    // Every row is a city of the one country, or its fastest server, but
+    // for the "Change country" action.
+    const QString city = item->data(Qt::UserRole).toString();
+    if (city == QLatin1String("__change_country__"))
+    {
+        return {};
+    }
+    return {.countryCode = m_countryCode, .countryName = m_countryName, .city = city};
+}
+
 void LocationPicker::updateHeader() const
 {
     if (m_selectedCity.isEmpty() == false)
@@ -785,6 +798,13 @@ bool RecentPicker::eventFilter(QObject* obj, QEvent* ev)
     return PickerBase::eventFilter(obj, ev);
 }
 
+PickerBase::RowLocation RecentPicker::rowLocation(const QListWidgetItem* item) const
+{
+    const QString code = item->data(Qt::UserRole).toString();
+    return {.countryCode = code, .countryName = GeoUtils::countryCodeToName(code),
+            .city = item->data(Qt::UserRole + 1).toString()};
+}
+
 void RecentPicker::onRowClicked(QListWidgetItem* item)
 {
     const QString code = item->data(Qt::UserRole).toString();
@@ -825,6 +845,8 @@ void FavoritesPicker::refresh()
     {
         m_bottomLine->setText(tr("None yet"));
         m_chevron->setVisible(false);
+        // The last one was taken out with the list open.
+        closePopup();
         return;
     }
 
@@ -860,6 +882,13 @@ bool FavoritesPicker::eventFilter(QObject* obj, QEvent* ev)
     if (handleCommonEvents(obj, ev) == true)
         return true;
     return PickerBase::eventFilter(obj, ev);
+}
+
+PickerBase::RowLocation FavoritesPicker::rowLocation(const QListWidgetItem* item) const
+{
+    const QString code = item->data(Qt::UserRole).toString();
+    return {.countryCode = code, .countryName = GeoUtils::countryCodeToName(code),
+            .city = item->data(Qt::UserRole + 1).toString()};
 }
 
 void FavoritesPicker::onRowClicked(QListWidgetItem* item)
@@ -1003,6 +1032,17 @@ VpnPage::VpnPage(VpnManager* manager, QWidget* parent)
     // Favorites picker
     m_favoritesPicker = new FavoritesPicker(this);
     connect(m_favoritesPicker, &FavoritesPicker::connectionSelected, this, onPickerSelection);
+
+    // Right-clicking a location in any of them offers to favorite it or show
+    // its properties.
+    for (PickerBase* picker : std::initializer_list<PickerBase*>{m_locationPicker, m_recentPicker, m_favoritesPicker})
+    {
+        connect(picker, &PickerBase::rowContextMenuRequested, this,
+                [this, picker](const QString& code, const QString& name, const QString& city, const QPoint& globalPos)
+        {
+            ServerContextMenu::exec(m_manager, code, name, city, globalPos, window(), picker->popupWindow());
+        });
+    }
 
     // Auto-refresh favorites picker when favorites change
     connect(&FavoritesManager::instance(), &FavoritesManager::changed,

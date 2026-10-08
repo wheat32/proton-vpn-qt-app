@@ -59,6 +59,9 @@ set(SOURCES
         cli/natpmpManager.cpp
         cli/statusMonitor.h
         cli/statusMonitor.cpp
+        cli/serverList.h
+        cli/serverListCache.h
+        cli/serverListCache.cpp
         cli/appImageUtils.h
         cli/cliNoiseFilter.h
         cli/cliSession.h
@@ -97,6 +100,9 @@ set(SOURCES
         widgets/quickSettingSource.h
         widgets/quickSettingsMenu.h
         widgets/quickSettingsMenu.cpp
+        widgets/serverContextMenu.h
+        widgets/serverContextMenu.cpp
+        widgets/sortArrowHeader.h
         widgets/quickSettingsPanel.h
         widgets/quickSettingsPanel.cpp
         widgets/styleUtils.h
@@ -132,6 +138,8 @@ set(SOURCES
         dialogs/quitDialog.cpp
         dialogs/reconnectDialog.h
         dialogs/reconnectDialog.cpp
+        dialogs/serverPropertiesDialog.h
+        dialogs/serverPropertiesDialog.cpp
         dialogs/updateAvailableDialog.h
         dialogs/updateAvailableDialog.cpp
         dialogs/whatsNewDialog.h

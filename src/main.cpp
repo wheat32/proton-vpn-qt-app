@@ -64,6 +64,11 @@ int main(int argc, char* argv[])
 
     // Mirror DBG_* output to a rotating log file if the user has enabled it.
     FileLogger::instance().setEnabled(AppConfig::instance().logToFile());
+    // --verbose (or -v) turns verbose output on for this run, whatever the
+    // Verbose Logging setting says.
+    const QStringList arguments = QApplication::arguments().mid(1);
+    VerboseLog::setLaunchOption(arguments.contains(QStringLiteral("--verbose"))
+                                || arguments.contains(QStringLiteral("-v")));
 
     //  Startup diagnostics
     DBG_APP(QStringLiteral("=== ProtonVPN Qt App starting ==="));
@@ -77,6 +82,10 @@ int main(int argc, char* argv[])
     DBG_APP(QStringLiteral("CPU arch           : ") + QSysInfo::currentCpuArchitecture());
     DBG_APP(QStringLiteral("Locale             : ") + QLocale::system().name());
     DBG_APP(QStringLiteral("Config dir         : ") + AppConfig::configDir());
+    DBG_APP(QStringLiteral("Verbose output     : ")
+            + (VerboseLog::launchOption() == true ? QStringLiteral("on (--verbose)")
+               : AppConfig::instance().verboseLogging() == true ? QStringLiteral("on (setting)")
+                                                                : QStringLiteral("off")));
     DBG_APP(QStringLiteral("================================="));
 
     AppConfig::instance().logLoadedConfig();

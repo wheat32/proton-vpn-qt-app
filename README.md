@@ -39,6 +39,7 @@ A Qt GUI front-end for the [Proton VPN Linux CLI](https://protonvpn.com/support/
 - **Location picker** on the main VPN page: choose the fastest server or a specific city, with country flag and feature icons
 - **Recent connections** picker: quick access to previously used locations, with configurable history depth
 - **Favorites**: save locations and pick them from a Favorites dropdown on the main page
+- **Right-click any location**, in the Countries list or the main page's dropdowns, to add it to Favorites or take it out, or to open its **Properties**: where it is, its features, whether you have connected there, and each of its servers with load, plan, features, status and addresses (from the CLI's server list)
 
 ### Settings
 **App tab**
@@ -47,6 +48,7 @@ A Qt GUI front-end for the [Proton VPN Linux CLI](https://protonvpn.com/support/
 - **Desktop Notifications** for connect/disconnect events, and **Check for Updates on Startup**
 - *(Plus)* **Recent Connections** count (0–20) and **Favorites**, each with a one-click clear
 - **Write Logs to File**
+- **Verbose Logging**: extra detail in the log, such as every server and node behind a location's Properties; launching with `--verbose` (or `-v`) turns it on for one run
 
 **Appearance tab**
 - **Theme**: System Settings, Dark, or Light
