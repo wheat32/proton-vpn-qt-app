@@ -65,6 +65,10 @@ public:
     static QStringList defaultQuickSettings();
     bool favoritesEnabled() const;
     QString lastSeenVersion() const;
+    // Whether the VPN page's tip pointing out the power button was dismissed.
+    // The tip is for a first launch, so a config written before the setting
+    // existed counts as dismissed.
+    bool powerButtonHintShown() const;
     bool checkForUpdates() const;
     bool logToFile() const;
     // Verbose output (see VerboseLog in debug.h).
@@ -89,6 +93,7 @@ public:
     void setQuickSettings(const QStringList& value);
     void setFavoritesEnabled(bool value);
     void setLastSeenVersion(const QString& value);
+    void setPowerButtonHintShown(bool value);
     void setCheckForUpdates(bool value);
     void setLogToFile(bool value);
     void setVerboseLogging(bool value);
@@ -134,6 +139,7 @@ private:
     QStringList m_quickSettings = defaultQuickSettings();
     bool m_favoritesEnabled = true;
     QString m_lastSeenVersion;
+    bool m_powerButtonHintShown = false;
     bool m_checkForUpdates = true;
     bool m_logToFile = false;
     bool m_verboseLogging = false;

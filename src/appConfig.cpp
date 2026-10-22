@@ -138,6 +138,9 @@ void AppConfig::load()
     }
     m_favoritesEnabled = obj.value(QStringLiteral("favorites_enabled")).toBool(true);
     m_lastSeenVersion = obj.value(QStringLiteral("last_seen_version")).toString();
+    // Missing from a config an earlier version wrote: that user has launched
+    // the app before, so the first-launch tip is not for them.
+    m_powerButtonHintShown = obj.value(QStringLiteral("power_button_hint_shown")).toBool(true);
     m_checkForUpdates = obj.value(QStringLiteral("check_for_updates")).toBool(true);
     m_logToFile = obj.value(QStringLiteral("log_to_file")).toBool(false);
     m_verboseLogging = obj.value(QStringLiteral("verbose_logging")).toBool(false);
@@ -182,6 +185,7 @@ void AppConfig::logLoadedConfig() const
     DBG_SETTINGS(QStringLiteral("  quick_settings           = ") + m_quickSettings.join(QStringLiteral(", ")));
     DBG_SETTINGS(QStringLiteral("  favorites_enabled        = ") + boolText(m_favoritesEnabled));
     DBG_SETTINGS(QStringLiteral("  last_seen_version        = ") + m_lastSeenVersion);
+    DBG_SETTINGS(QStringLiteral("  power_button_hint_shown  = ") + boolText(m_powerButtonHintShown));
     DBG_SETTINGS(QStringLiteral("  check_for_updates        = ") + boolText(m_checkForUpdates));
     DBG_SETTINGS(QStringLiteral("  log_to_file              = ") + boolText(m_logToFile));
     DBG_SETTINGS(QStringLiteral("  verbose_logging          = ") + boolText(m_verboseLogging));
@@ -213,6 +217,7 @@ bool AppConfig::save() const
     {
         obj[QStringLiteral("last_seen_version")] = m_lastSeenVersion;
     }
+    obj[QStringLiteral("power_button_hint_shown")] = m_powerButtonHintShown;
     obj[QStringLiteral("check_for_updates")] = m_checkForUpdates;
     obj[QStringLiteral("log_to_file")] = m_logToFile;
     obj[QStringLiteral("verbose_logging")] = m_verboseLogging;
@@ -434,6 +439,16 @@ void AppConfig::setLastSeenVersion(const QString& value)
     (void)save();
 }
 
+bool AppConfig::powerButtonHintShown() const { return m_powerButtonHintShown; }
+
+void AppConfig::setPowerButtonHintShown(const bool value)
+{
+    if (m_powerButtonHintShown == value) return;
+    DBG_SETTINGS(QStringLiteral("Setting changed: power_button_hint_shown = ") + boolText(value));
+    m_powerButtonHintShown = value;
+    (void)save();
+}
+
 bool AppConfig::checkForUpdates() const { return m_checkForUpdates; }
 
 void AppConfig::setCheckForUpdates(const bool value)
@@ -488,6 +503,7 @@ void AppConfig::resetToDefaults()
     m_quickSettings          = defaultQuickSettings();
     m_favoritesEnabled       = true;
     m_lastSeenVersion        = QString();
+    m_powerButtonHintShown   = false;
     m_checkForUpdates        = true;
     m_logToFile              = false;
     m_verboseLogging         = false;

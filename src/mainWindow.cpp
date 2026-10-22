@@ -688,6 +688,11 @@ void MainWindow::showPage(Page page)
     const bool debugFromLogin = (page == Page::Debug && m_preDebugPage == Page::Login);
     m_debugPage->setLeftPadding(debugFromLogin ? (SIDEBAR_MARGIN + NAV_BTN_SIZE + SIDEBAR_MARGIN) : 0);
 #endif
+
+    if (page == Page::Vpn)
+    {
+        maybeShowPowerButtonHint();
+    }
 }
 
 void MainWindow::showNotInstalled()
@@ -1109,7 +1114,10 @@ void MainWindow::maybeShowWhatsNew()
     }
 
     if (currentVersion.isEmpty())
+    {
+        maybeShowPowerButtonHint();
         return;
+    }
 
     const QString lastSeen = AppConfig::instance().lastSeenVersion();
 
@@ -1122,6 +1130,19 @@ void MainWindow::maybeShowWhatsNew()
 
         auto* dlg = new WhatsNewDialog(currentVersion, this);
         dlg->setModal(true);
+        m_whatsNewDialog = dlg;
+        connect(dlg, &QDialog::finished, this, &MainWindow::maybeShowPowerButtonHint);
         dlg->show();
+        return;
     }
+    maybeShowPowerButtonHint();
+}
+
+void MainWindow::maybeShowPowerButtonHint()
+{
+    // Not before the What's New check, which may open its dialog over the page.
+    if (m_whatsNewShown == false) return;
+    if (m_whatsNewDialog != nullptr && m_whatsNewDialog->isVisible() == true) return;
+    if (m_stack->currentIndex() != std::to_underlying(Page::Vpn)) return;
+    m_vpnPage->showPowerButtonHint();
 }

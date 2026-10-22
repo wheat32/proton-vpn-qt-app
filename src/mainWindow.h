@@ -1,9 +1,11 @@
 #pragma once
 
 #include <QCloseEvent>
+#include <QDialog>
 #include <QEvent>
 #include <QFrame>
 #include <QKeyEvent>
+#include <QPointer>
 #include <QResizeEvent>
 #include <QTimer>
 #include <QStackedWidget>
@@ -119,6 +121,10 @@ private:
     void keyPressEvent(QKeyEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
     void maybeShowWhatsNew();
+    // Shows the VPN page's first-launch tip on the power button once the page
+    // is up and the What's New dialog, which a first launch also opens, is
+    // closed.
+    void maybeShowPowerButtonHint();
 
     QNetworkAccessManager* m_networkManager = nullptr;
     // Null when the desktop provides no system tray; every use must be guarded.
@@ -127,6 +133,7 @@ private:
     bool m_startupAutoConnectPending = false; // auto-connect if the first known state is Disconnected
     VpnState m_lastNotifiedState = VpnState::Unknown;
     bool m_whatsNewShown = false; // guard so we only show the dialog once per launch
+    QPointer<QDialog> m_whatsNewDialog;
 #ifdef QT_DEBUG
     Page m_preDebugPage = Page::Login; // page to return to when leaving Debug
     bool m_signinPreview = false;      // the login page shows a Debug page preview

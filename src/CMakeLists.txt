@@ -93,6 +93,8 @@ set(SOURCES
         widgets/globeAnimationCombo.h
         widgets/globeAnimationCombo.cpp
         widgets/gripSplitter.h
+        widgets/hintBubble.h
+        widgets/hintBubble.cpp
         widgets/pickerBase.h
         widgets/pickerDrawer.h
         widgets/pickerDrawer.cpp

@@ -973,6 +973,12 @@ VpnPage::VpnPage(VpnManager* manager, QWidget* parent)
     m_powerBtn = new PowerButton(m_topContentWidget);
     connect(m_powerBtn, &PowerButton::clicked, this, [this]()
     {
+        // Using the button is what the tip asks for, so it has done its job.
+        if (m_powerButtonHint != nullptr)
+        {
+            m_powerButtonHint->dismiss();
+        }
+
         if (m_currentState == VpnState::Connected)
         {
             emit disconnectRequested();
@@ -2218,6 +2224,25 @@ void VpnPage::applyGlobeSettings()
 {
     m_globe->setPauseWhenInactive(AppConfig::instance().globePauseWhenUnfocused());
     m_globe->setVisible(MotionPreference::instance().animationEnabled(AppConfig::instance().globeAnimation()));
+}
+
+void VpnPage::showPowerButtonHint()
+{
+    if (AppConfig::instance().powerButtonHintShown() == true || m_powerButtonHint != nullptr) return;
+
+    m_powerButtonHint = new HintBubble(
+        tr("Turn the VPN On or Off"),
+        tr("Click the power button to connect, and click it again to disconnect. "
+           "Its ring is green while you're connected and red while you're not."),
+        m_powerBtn, this);
+    // Beside the button where there is room, so the status below it stays in
+    // view, and clear of the quick settings.
+    m_powerButtonHint->setSides({HintBubble::Side::Right, HintBubble::Side::Below, HintBubble::Side::Above});
+    m_powerButtonHint->setBounds(m_mainColumn);
+    connect(m_powerButtonHint, &HintBubble::dismissed, this, []()
+    {
+        AppConfig::instance().setPowerButtonHintShown(true);
+    });
 }
 
 // Faces the country being connected to, or connected to; spins otherwise.

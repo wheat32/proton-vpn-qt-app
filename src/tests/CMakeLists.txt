@@ -212,3 +212,11 @@ add_qt_test(tst_stackPage
     ../widgets/stackPage.h
 )
 target_link_libraries(tst_stackPage Qt6::Widgets)
+
+#  HintBubble placement
+add_qt_test(tst_hintBubble
+    tst_hintBubble.cpp
+    ../widgets/hintBubble.h
+    ../widgets/hintBubble.cpp
+)
+target_link_libraries(tst_hintBubble Qt6::Widgets)

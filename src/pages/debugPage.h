@@ -49,6 +49,7 @@ private:
     QLabel* m_valShowPicker         = nullptr;
     QLabel* m_valTheme              = nullptr;
     QLabel* m_valLastSeenVersion    = nullptr;
+    QLabel* m_valPowerButtonHint    = nullptr;
     QLabel* m_valCheckForUpdates    = nullptr;
     QLabel* m_valLogToFile          = nullptr;
     QLabel* m_valVerboseLogging     = nullptr;

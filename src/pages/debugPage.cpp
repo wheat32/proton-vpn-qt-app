@@ -435,6 +435,11 @@ DebugPage::DebugPage(QWidget* parent)
         QStringLiteral("(empty)"),
         []() { AppConfig::instance().setLastSeenVersion(QString()); });
 
+    m_valPowerButtonHint = addRow(
+        QStringLiteral("power_button_hint_shown"),
+        QStringLiteral("false"),
+        []() { AppConfig::instance().setPowerButtonHintShown(false); });
+
     m_valCheckForUpdates = addRow(
         QStringLiteral("check_for_updates"),
         QStringLiteral("true"),
@@ -541,6 +546,7 @@ void DebugPage::refreshValues() const
 
     const QString lsv = cfg.lastSeenVersion();
     m_valLastSeenVersion->setText(lsv.isEmpty() ? QStringLiteral("(empty)") : lsv);
+    m_valPowerButtonHint->setText(boolStr(cfg.powerButtonHintShown()));
     m_valCheckForUpdates->setText(boolStr(cfg.checkForUpdates()));
     m_valLogToFile->setText(boolStr(cfg.logToFile()));
     m_valVerboseLogging->setText(boolStr(cfg.verboseLogging()));

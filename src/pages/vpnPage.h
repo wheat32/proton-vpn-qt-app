@@ -3,6 +3,7 @@
 #include <optional>
 #include <tuple>
 #include <QElapsedTimer>
+#include <QPointer>
 #include <QPushButton>
 #include <QTimer>
 #include <QPropertyAnimation>
@@ -17,6 +18,7 @@
 #include "../widgets/pixmapCache.h"
 #include "../widgets/svgBanner.h"
 #include "../widgets/globeWidget.h"
+#include "../widgets/hintBubble.h"
 #include <QGridLayout>
 #include "../dialogs/errorDetailsDialog.h"
 #include "../widgets/quickSettingsPanel.h"
@@ -177,6 +179,9 @@ public:
     // Applies the globe settings: shows or removes it per Globe Animation and
     // the desktop's reduce-motion preference, and sets Pause When Unfocused.
     void applyGlobeSettings();
+    // Points out the power button with a tip, unless one was dismissed before
+    // (see AppConfig::powerButtonHintShown()).
+    void showPowerButtonHint();
     void notifyExternalConnect(const QString& city);
     void refreshRecentPicker() const;
     // Adds a dismissable warning to the warnings area, which counts it and
@@ -225,6 +230,8 @@ private:
     bool m_isFreeUser = false;
 
     PowerButton*    m_powerBtn;
+    // The first-launch tip on the power button while it shows.
+    QPointer<HintBubble> m_powerButtonHint;
     QLabel*         m_statusLabel;
     QLabel*         m_infoLabel;
     QLabel*         m_signOutHintLabel;
