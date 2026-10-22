@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    name: Build (Ubuntu)
+    name: Build Native x86_64 (Ubuntu)
     runs-on: ubuntu-26.04
 
     steps:
@@ -46,7 +46,7 @@ jobs:
           retention-days: 7
 
   build-flatpak:
-    name: Build Flatpak (Ubuntu)
+    name: Build Flatpak x86_64 (Ubuntu)
     runs-on: ubuntu-26.04
 
     steps:
@@ -187,7 +187,7 @@ jobs:
           retention-days: 7
 
   build-appimage-standalone:
-    name: Build AppImage Standalone (Ubuntu)
+    name: Build AppImage Standalone x86_64 (Ubuntu)
     runs-on: ubuntu-26.04
 
     steps:
@@ -207,7 +207,7 @@ jobs:
             python3 python3-venv python3-gi python3-gi-cairo \
             wget
 
-      - name: Build AppImage (Standalone)
+      - name: Build AppImage x86_64 (Standalone)
         run: |
           chmod +x build-appimage_standalone.sh
           ./build-appimage_standalone.sh
@@ -228,7 +228,7 @@ jobs:
   # Kept in CI too so a compat-specific breakage (different apt package set)
   # surfaces on a PR instead of only at release time.
   build-appimage-standalone-compat:
-    name: Build AppImage Standalone Compat (Ubuntu 24.04)
+    name: Build AppImage Standalone Compat x86_64 (Ubuntu 24.04)
     runs-on: ubuntu-24.04
 
     steps:
@@ -248,7 +248,7 @@ jobs:
             python3 python3-venv python3-gi python3-gi-cairo \
             wget
 
-      - name: Build AppImage (Standalone Compat)
+      - name: Build AppImage x86_64 (Standalone Compat)
         run: |
           chmod +x build-appimage_standalone.sh
           ./build-appimage_standalone.sh
@@ -289,7 +289,7 @@ jobs:
             python3 python3-venv python3-gi python3-gi-cairo \
             wget
 
-      - name: Build AppImage (Standalone ARM64)
+      - name: Build AppImage ARM64 (Standalone)
         run: |
           chmod +x build-appimage_standalone.sh
           ./build-appimage_standalone.sh
@@ -307,7 +307,7 @@ jobs:
           retention-days: 7
 
   build-appimage-lite:
-    name: Build AppImage Lite (Ubuntu)
+    name: Build AppImage Lite x86_64 (Ubuntu)
     runs-on: ubuntu-26.04
 
     steps:
@@ -327,7 +327,7 @@ jobs:
             python3 python3-venv \
             wget
 
-      - name: Build AppImage (Lite)
+      - name: Build AppImage x86_64 (Lite)
         run: |
           chmod +x build-appimage_lite.sh
           ./build-appimage_lite.sh
@@ -367,7 +367,7 @@ jobs:
             python3 python3-venv \
             wget
 
-      - name: Build AppImage (Lite ARM64)
+      - name: Build AppImage ARM64 (Lite)
         run: |
           chmod +x build-appimage_lite.sh
           ./build-appimage_lite.sh

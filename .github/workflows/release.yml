@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build-native:
-    name: Build Native (Ubuntu)
+    name: Build Native x86_64 (Ubuntu)
     runs-on: ubuntu-26.04
 
     steps:
@@ -40,11 +40,11 @@ jobs:
       - name: Upload tarball artifact
         uses: actions/upload-artifact@v7
         with:
-          name: native-tarball
+          name: native-tarball-x86_64
           path: proton-vpn-qt-app-linux-x86_64.tar.gz
 
   build-flatpak:
-    name: Build Flatpak (Ubuntu)
+    name: Build Flatpak x86_64 (Ubuntu)
     runs-on: ubuntu-26.04
 
     steps:
@@ -106,7 +106,7 @@ jobs:
       - name: Upload Flatpak artifact
         uses: actions/upload-artifact@v7
         with:
-          name: flatpak-bundle
+          name: flatpak-bundle-x86_64
           path: io.github.wheat32.ProtonVPNQt-x86_64.flatpak
 
   # Same build as build-flatpak, for ARM64 on a native ARM runner (no
@@ -179,7 +179,7 @@ jobs:
           path: io.github.wheat32.ProtonVPNQt-aarch64.flatpak
 
   build-appimage-standalone:
-    name: Build AppImage Standalone (Ubuntu)
+    name: Build AppImage Standalone x86_64 (Ubuntu)
     runs-on: ubuntu-26.04
 
     steps:
@@ -199,7 +199,7 @@ jobs:
             python3 python3-venv python3-gi python3-gi-cairo \
             wget
 
-      - name: Build AppImage (Standalone)
+      - name: Build AppImage x86_64 (Standalone)
         run: |
           chmod +x build-appimage_standalone.sh
           ./build-appimage_standalone.sh
@@ -209,7 +209,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: appimage-standalone
+          name: appimage-standalone-x86_64
           path: dist/*-standalone-*.AppImage
 
   # Same build as above, but pinned to ubuntu-24.04 instead of ubuntu-26.04.
@@ -222,7 +222,7 @@ jobs:
   # pinned explicitly (not ubuntu-latest) so it won't silently drift onto
   # 26.04's baseline once GitHub Actions retires the 24.04 label.
   build-appimage-standalone-compat:
-    name: Build AppImage Standalone Compat (Ubuntu 24.04)
+    name: Build AppImage Standalone Compat x86_64 (Ubuntu 24.04)
     runs-on: ubuntu-24.04
 
     steps:
@@ -242,7 +242,7 @@ jobs:
             python3 python3-venv python3-gi python3-gi-cairo \
             wget
 
-      - name: Build AppImage (Standalone Compat)
+      - name: Build AppImage x86_64 (Standalone Compat)
         run: |
           chmod +x build-appimage_standalone.sh
           ./build-appimage_standalone.sh
@@ -253,7 +253,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: appimage-standalone-compat
+          name: appimage-standalone-compat-x86_64
           path: dist/*-standalone-compat-*.AppImage
 
   # Same build as build-appimage-standalone, for ARM64 on a native ARM runner.
@@ -282,7 +282,7 @@ jobs:
             python3 python3-venv python3-gi python3-gi-cairo \
             wget
 
-      - name: Build AppImage (Standalone ARM64)
+      - name: Build AppImage ARM64 (Standalone)
         run: |
           chmod +x build-appimage_standalone.sh
           ./build-appimage_standalone.sh
@@ -296,7 +296,7 @@ jobs:
           path: dist/*-standalone-aarch64.AppImage
 
   build-appimage-lite:
-    name: Build AppImage Lite (Ubuntu)
+    name: Build AppImage Lite x86_64 (Ubuntu)
     runs-on: ubuntu-26.04
 
     steps:
@@ -316,7 +316,7 @@ jobs:
             python3 python3-venv \
             wget
 
-      - name: Build AppImage (Lite)
+      - name: Build AppImage x86_64 (Lite)
         run: |
           chmod +x build-appimage_lite.sh
           ./build-appimage_lite.sh
@@ -326,7 +326,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: appimage-lite
+          name: appimage-lite-x86_64
           path: dist/*-lite-*.AppImage
 
   # Same build as build-appimage-lite, for ARM64. See
@@ -352,7 +352,7 @@ jobs:
             python3 python3-venv \
             wget
 
-      - name: Build AppImage (Lite ARM64)
+      - name: Build AppImage ARM64 (Lite)
         run: |
           chmod +x build-appimage_lite.sh
           ./build-appimage_lite.sh
@@ -385,42 +385,42 @@ jobs:
           echo "TAG=v$VERSION" >> "$GITHUB_OUTPUT"
           echo "NAME=v$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Download native tarball
+      - name: Download native tarball x86_64
         uses: actions/download-artifact@v8
         with:
-          name: native-tarball
+          name: native-tarball-x86_64
 
-      - name: Download Flatpak bundle
+      - name: Download Flatpak bundle x86_64
         uses: actions/download-artifact@v8
         with:
-          name: flatpak-bundle
+          name: flatpak-bundle-x86_64
 
-      - name: Download Flatpak bundle (ARM64)
+      - name: Download Flatpak bundle ARM64
         uses: actions/download-artifact@v8
         with:
           name: flatpak-bundle-arm64
 
-      - name: Download AppImage (Standalone)
+      - name: Download AppImage x86_64 (Standalone)
         uses: actions/download-artifact@v8
         with:
-          name: appimage-standalone
+          name: appimage-standalone-x86_64
 
-      - name: Download AppImage (Standalone Compat)
+      - name: Download AppImage x86_64 (Standalone Compat)
         uses: actions/download-artifact@v8
         with:
-          name: appimage-standalone-compat
+          name: appimage-standalone-compat-x86_64
 
-      - name: Download AppImage (Standalone ARM64)
+      - name: Download AppImage ARM64 (Standalone)
         uses: actions/download-artifact@v8
         with:
           name: appimage-standalone-arm64
 
-      - name: Download AppImage (Lite)
+      - name: Download AppImage x86_64 (Lite)
         uses: actions/download-artifact@v8
         with:
-          name: appimage-lite
+          name: appimage-lite-x86_64
 
-      - name: Download AppImage (Lite ARM64)
+      - name: Download AppImage ARM64 (Lite)
         uses: actions/download-artifact@v8
         with:
           name: appimage-lite-arm64
