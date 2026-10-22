@@ -113,6 +113,12 @@ add_qt_test(tst_cliSettings
     ../cli/cliTable.h
 )
 
+#  ServerList (header-only)
+add_qt_test(tst_serverList
+    tst_serverList.cpp
+    ../cli/serverList.h
+)
+
 #  CliTable (header-only)
 add_qt_test(tst_cliTable
     tst_cliTable.cpp
@@ -206,3 +212,11 @@ add_qt_test(tst_stackPage
     ../widgets/stackPage.h
 )
 target_link_libraries(tst_stackPage Qt6::Widgets)
+
+#  HintBubble placement
+add_qt_test(tst_hintBubble
+    tst_hintBubble.cpp
+    ../widgets/hintBubble.h
+    ../widgets/hintBubble.cpp
+)
+target_link_libraries(tst_hintBubble Qt6::Widgets)

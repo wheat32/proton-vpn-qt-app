@@ -47,6 +47,12 @@ public:
         m_statusLabel->setText(on == true ? tr("ON") : tr("OFF"));
     }
 
+    // Sets the state the way a click would, emitting toggled() if it changes.
+    void setOnAsUser(const bool on) const
+    {
+        m_toggle->setOnAsUser(on);
+    }
+
 signals:
     void toggled(bool on);
 

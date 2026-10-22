@@ -15,8 +15,11 @@ QWidget#sidebar {
     padding: 0;
 }
 
+/* Painted here, not by the Qt style: Breeze draws a frame line as a faint
+   separator and Fusion (the AppImage's style) at full strength. */
 QFrame#sidebarDivider {
-    color: #3a3a55;
+    border: none;
+    background-color: #202036;
 }
 
 QToolButton#navButton {
@@ -100,6 +103,19 @@ QLineEdit#inputField {
     selection-background-color: #6d4aff;
 }
 QLineEdit#inputField:focus {
+    border-color: #6d4aff;
+}
+/*  The field of a QInputDialog (Custom DNS from the quick settings), drawn
+    like the app's own fields rather than by the Qt style.  */
+QInputDialog QLineEdit {
+    background-color: #1a1a2e;
+    border: 1px solid #3a3a55;
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: #eaeaea;
+    selection-background-color: #6d4aff;
+}
+QInputDialog QLineEdit:focus {
     border-color: #6d4aff;
 }
 
@@ -273,6 +289,30 @@ QPushButton#dangerButton {
 QPushButton#dangerButton:hover {
     background-color: rgba(214, 63, 63, 0.15);
 }
+/*  Disabled, e.g. a quick settings copy with nothing to clear.  */
+QPushButton#dangerButton:disabled {
+    color: #6a6a85;
+    border-color: #3a3a55;
+}
+
+/*  A Settings action that is not destructive (Restore, the auto-connect
+    server): the Clear buttons' shape, in the accent color.  */
+QPushButton#accentButton {
+    background-color: transparent;
+    color: #ab8fff;
+    border: 1px solid #6d4aff;
+    border-radius: 6px;
+    padding: 10px 24px;
+    font-weight: bold;
+}
+QPushButton#accentButton:hover {
+    background-color: rgba(109, 74, 255, 0.15);
+}
+/*  Disabled, e.g. the auto-connect server for a free account.  */
+QPushButton#accentButton:disabled {
+    color: #6a6a85;
+    border-color: #3a3a55;
+}
 
 QPushButton#iconButton {
     background-color: transparent;
@@ -399,6 +439,28 @@ QScrollBar::handle:vertical:hover {
 }
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     height: 0;
+}
+/*  Horizontal ones the same way (the Properties window's server table), and
+    no stippled page area under either: Fusion, the AppImage's style, draws
+    one where these rules leave it.  */
+QScrollBar:horizontal {
+    background: #1a1a2e;
+    height: 8px;
+    border-radius: 4px;
+}
+QScrollBar::handle:horizontal {
+    background: #3a3a55;
+    border-radius: 4px;
+    min-width: 30px;
+}
+QScrollBar::handle:horizontal:hover {
+    background: #6d4aff;
+}
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0;
+}
+QScrollBar::add-page, QScrollBar::sub-page {
+    background: none;
 }
 
 QFrame#numberSpinner {
@@ -597,6 +659,50 @@ QTabBar::tab:hover:!selected {
     border-top-right-radius: 6px;
 }
 
+/*  Menus (the tray menu, and the Settings page's right-click menu): drawn
+    here like the combo box dropdowns below, so they look the same under
+    every Qt style, with an outlined box for the checkable items. Square
+    cornered: a menu's window is not see-through, so rounded corners would
+    leave dark specks.  */
+QMenu {
+    background-color: #25253d;
+    color: #eaeaea;
+    border: 1px solid #3a3a55;
+    padding: 4px;
+}
+QMenu::item {
+    padding: 6px 14px 6px 30px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+}
+QMenu::item:selected {
+    background-color: #3a335d;
+    border-color: #664f9d;
+}
+QMenu::item:disabled {
+    color: #6a6a85;
+}
+QMenu::separator {
+    height: 1px;
+    margin: 4px 6px;
+    background-color: #3a3a55;
+}
+QMenu::indicator {
+    width: 14px;
+    height: 14px;
+    left: 9px;
+}
+QMenu::indicator:non-exclusive:unchecked {
+    border: 1px solid #555570;
+    border-radius: 3px;
+}
+QMenu::indicator:non-exclusive:checked {
+    border: 1px solid #6d4aff;
+    border-radius: 3px;
+    background-color: #6d4aff;
+    image: url(:/assets/check-white.svg);
+}
+
 QComboBox {
     background-color: #25253d;
     color: #eaeaea;
@@ -613,7 +719,7 @@ QComboBox:focus {
     border: 1px solid #6d4aff;
 }
 /*  The popup and its items are drawn entirely by these rules (combo boxes get
-    a QStyledItemDelegate, see SettingsPage::makeComboBox()), so they look the
+    a QStyledItemDelegate, see StyledComboBox), so they look the
     same under Breeze (native builds, Flatpak) and Fusion (AppImage). They copy
     Breeze's look: 30px items with a rounded, outlined highlight. Breeze's first
     item is 1px taller, hence the extra top padding, and the -1px item padding
@@ -710,14 +816,168 @@ VpnPage QWidget {
     background-color: transparent;
 }
 
-/*  Text over the globe sits on a partly transparent backdrop to stay legible.  */
-QLabel#vpnStatusLabel,
-QLabel#timerLabel,
-QLabel#infoLabel {
+/*  Except combo boxes (the quick settings'), which keep the colors they have
+    everywhere else. Their dropdown is a window of its own and would otherwise
+    show black wherever nothing paints it. The QFrame rule restores the
+    dropdown's frame; the item view rule after it wins for the view itself.  */
+VpnPage QComboBox {
+    background-color: #25253d;
+}
+VpnPage QComboBox QFrame {
+    background-color: #1a1a2e;
+}
+VpnPage QComboBox QAbstractItemView {
+    background-color: #25253d;
+}
+
+/*  The quick settings' cards let the globe show through. Their dividers are a
+    plain line: the window-colored edges QFrame#divider has elsewhere would
+    show as bands over the globe.  */
+QuickSettingsPanel QWidget#infoCard {
+    background-color: rgba(37, 37, 61, 0.6);
+}
+QuickSettingsPanel QFrame#divider,
+QuickSettingsPanel QFrame#plusDividerLine {
+    border: none;
+    min-height: 1px;
+    max-height: 1px;
+    background-color: rgba(58, 58, 85, 0.7);
+}
+/*  Its copies of the Settings page's buttons are as tall as its dropdowns,
+    so every row lines up.  */
+QuickSettingsPanel QPushButton#dangerButton,
+QuickSettingsPanel QPushButton#accentButton,
+QuickSettingsPanel QPushButton#secondaryButton {
+    padding: 6px 16px;
+}
+
+/*  Text over the globe sits on a partly transparent backdrop to stay legible.
+    Only on the VPN page: other pages use infoLabel too, with no globe behind.  */
+VpnPage QLabel#vpnStatusLabel,
+VpnPage QLabel#timerLabel,
+VpnPage QLabel#infoLabel {
     background-color: rgba(26, 26, 46, 0.72);
     border-radius: 8px;
     padding: 2px 12px;
 }
 QLabel#infoLabel[empty="true"] {
     background-color: transparent;
+}
+/*  The error box and the sign-out hint below it, in the colors their tints
+    give over the plain window but nearly opaque: tinted only lightly, they
+    let the globe's land show through their text and links.  */
+VpnPage QLabel#errorLabel {
+    background-color: rgba(45, 30, 48, 0.9);
+}
+VpnPage QLabel#signOutHintLabel {
+    background-color: rgba(44, 37, 45, 0.9);
+}
+
+/*  ==========================================================================
+    Countries page beside the home page (the split view)
+    ========================================================================== */
+
+/*  Styled like the home page's quick settings on the other side: a section
+    header for its title, and its lists in cards.  */
+CountriesPage[splitView="true"] QLabel#sectionTitle {
+    color: #c0b8e8;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+CountriesPage[splitView="true"] QListWidget#serverList,
+CountriesPage[splitView="true"] QScrollArea#countriesAccordion {
+    background-color: #25253d;
+    border: 1px solid #3a3a55;
+    border-radius: 8px;
+}
+/*  The card's color rather than transparent, which leaves the header to the
+    Qt style's own button fill.  */
+CountriesPage[splitView="true"] QToolButton#accordionHeader {
+    background-color: #25253d;
+}
+CountriesPage[splitView="true"] QToolButton#accordionHeader:hover {
+    background-color: #2d2d4a;
+}
+
+/*  Its countries are a grid of cards, each a flag over its name (see
+    CountriesPage::updateCountriesListMode()). The list itself is only the
+    space the cards sit in.  */
+QListWidget#countryGrid {
+    background-color: transparent;
+    border: none;
+    outline: none;
+    font-size: 12px;
+}
+QListWidget#countryGrid::item {
+    margin: 4px;
+    padding: 10px 6px 6px 6px;
+    color: #eaeaea;
+    background-color: #25253d;
+    border: 1px solid #3a3a55;
+    border-radius: 8px;
+}
+QListWidget#countryGrid::item:hover {
+    background-color: #2d2d4a;
+    border-color: #6d4aff;
+}
+QListWidget#countryGrid::item:selected {
+    background-color: #3a2d7a;
+    border-color: #6d4aff;
+    color: white;
+}
+
+/*  ==========================================================================
+    Tooltips and the Properties window's server table: drawn here so they
+    look the same under every Qt style, Fusion (the AppImage's) included.
+    ========================================================================== */
+
+QToolTip {
+    background-color: #25253d;
+    color: #eaeaea;
+    border: 1px solid #3a3a55;
+    padding: 4px 6px;
+}
+
+QTableWidget#serverTable {
+    background-color: #25253d;
+    alternate-background-color: #2a2a45;
+    color: #eaeaea;
+    border: 1px solid #3a3a55;
+    border-radius: 6px;
+    selection-background-color: #3a335d;
+    selection-color: #eaeaea;
+    outline: none;
+}
+QTableWidget#serverTable::item {
+    padding: 0px 8px;
+    border: none;
+}
+QTableWidget#serverTable QHeaderView {
+    background-color: transparent;
+}
+QTableWidget#serverTable QHeaderView::section {
+    background-color: #1f1f35;
+    color: #9999bb;
+    border: none;
+    border-right: 1px solid #3a3a55;
+    border-bottom: 1px solid #3a3a55;
+    /* Room at the right for the sort arrow SortArrowHeader draws. */
+    padding: 6px 22px 6px 8px;
+    font-weight: bold;
+}
+QTableWidget#serverTable QHeaderView::section:last {
+    border-right: none;
+}
+/* Where the two scroll bars meet: left to the table's own rounded frame, as
+   Breeze does, not a panel drawn over it, as Fusion (the AppImage's style)
+   does. */
+QTableWidget#serverTable::corner {
+    background: transparent;
+    border: none;
+}
+QTableWidget#serverTable QTableCornerButton::section {
+    background-color: #1f1f35;
+    border: none;
 }

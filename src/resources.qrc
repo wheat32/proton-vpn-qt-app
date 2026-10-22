@@ -21,6 +21,7 @@
         <file alias="chevron-up.svg">assets/chevron-up.svg</file>
         <file alias="chevron-down.svg">assets/chevron-down.svg</file>
         <file alias="chevron-down-light.svg">assets/chevron-down-light.svg</file>
+        <file alias="check-white.svg">assets/check-white.svg</file>
         <file alias="server-p2p.svg">assets/servers/p2p.svg</file>
         <file alias="server-secure-core.svg">assets/servers/secure-core.svg</file>
         <file alias="server-smart-routing.svg">assets/servers/smart-routing.svg</file>

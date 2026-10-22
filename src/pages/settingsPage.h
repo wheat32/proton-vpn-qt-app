@@ -12,7 +12,11 @@
 #include "../vpnManager.h"
 #include "../cli/natpmpManager.h"
 #include "../dialogs/aboutDialog.h"
+#include "../widgets/quickSettingSource.h"
 #include "../widgets/toggleWithStatus.h"
+
+class CliSettingControls;
+class GlobeAnimationCombo;
 
 // ---------------------------------------------------------------------------
 // SettingsPage
@@ -24,6 +28,9 @@ class SettingsPage : public QWidget
 public:
     explicit SettingsPage(VpnManager* manager, NatPmpManager* natPmpManager, QWidget* parent = nullptr);
     void refresh();
+    // Every setting on this page, for the VPN page's quick settings to show
+    // the ones chosen with each row's right-click menu.
+    [[nodiscard]] const QList<QuickSettingSource>& quickSettingSources() const { return m_quickSettingSources; }
 
 signals:
     void recentConnectionsCleared();
@@ -32,30 +39,16 @@ signals:
     void favoritesDropdownVisibilityChanged(bool visible);
     void favoritesEnabledChanged(bool enabled);
     void favoritesCleared();
+    void countriesSidebarVisibilityChanged(bool visible);
+    // Which quick settings to show changed, or whether to show them at all.
+    void quickSettingsChanged();
 
 private:
-    // A simple on/off toggle row
-    struct ToggleRow
-    {
-        QString cliKey;
-        ToggleWithStatus* toggle = nullptr;
-        // Value sent to the CLI (and expected when loading) for the ON state.
-        // Most settings use "on"; kill-switch uses "standard".
-        QString onValue = QStringLiteral("on");
-    };
-
-    // A combo-box row (multi-value setting)
-    struct ComboRow
-    {
-        QString cliKey;
-        QComboBox* combo = nullptr;
-        QStringList cliValues; // parallel to combo items
-    };
-
     VpnManager* m_manager;
     NatPmpManager* m_natPmpManager = nullptr;
-    QList<ToggleRow> m_toggleRows;
-    QList<ComboRow> m_comboRows;
+    // The VPN tab's toggles and combo boxes made by makeToggleRow() and
+    // makeComboRow().
+    CliSettingControls* m_cliControls = nullptr;
 
     // Custom DNS widgets
     ToggleWithStatus* m_dnsToggle = nullptr;
@@ -83,22 +76,18 @@ private:
     ToggleWithStatus* m_autoConnectToggle = nullptr;
     QWidget* m_autoConnectRow = nullptr;
 
-    // Auto-connect server dropdown (shown only when auto-connect is on)
-    QWidget*   m_autoConnectServerRow   = nullptr;
-    QComboBox* m_autoConnectServerCombo = nullptr;
+    // Auto-connect server, chosen in a StartupServerDialog (shown only when
+    // auto-connect is on)
+    QWidget*     m_autoConnectServerRow    = nullptr;
+    QPushButton* m_autoConnectServerButton = nullptr;
 
     // Desktop notifications
     ToggleWithStatus* m_notificationsToggle = nullptr;
 
     // Theme selector combo box
     QComboBox* m_themeCombo = nullptr;
-    QComboBox* m_globeCombo = nullptr;
-    QLabel* m_globeDescLabel = nullptr;
+    GlobeAnimationCombo* m_globeCombo = nullptr;
     ToggleWithStatus* m_globePauseToggle = nullptr;
-    // Fills m_globeCombo; "Auto" is listed only when the desktop's
-    // reduce-motion preference can be read (MotionPreference::Available).
-    // Also updates the row's description, which explains Auto only then.
-    void populateGlobeCombo();
     // Pause When Unfocused only applies while the globe can show.
     void updateGlobePauseToggle() const;
     [[nodiscard]] static QString globeDescription();
@@ -163,6 +152,11 @@ private:
     // Adds an empty "infoCard" to hold one section's rows.
     static std::pair<QWidget*, QVBoxLayout*> addSectionCard(QWidget* parent, QVBoxLayout* layout);
 
+    QList<QuickSettingSource> m_quickSettingSources;
+    // Lists a setting for the quick settings, and gives its row the
+    // right-click menu that adds it to them or takes it out.
+    void addQuickSetting(const QuickSettingSource& source);
+
     // Helpers
     QWidget* makeToggleRow(QWidget* parent, const QString& label, const QString& desc,
                            const QString& cliKey,
@@ -175,12 +169,8 @@ private:
     // that cannot be changed while the VPN is active.  onAccept is called if
     // the user clicks the primary button; nothing extra is called on dismiss.
     void showReconnectDialog(const QString& settingLabel,
-                             std::function<void()> onAccept);
+                             const std::function<void()>& onAccept);
     static void addDivider(QVBoxLayout* layout, QWidget* parent);
-    static QWidget* makePlusDivider(QWidget* parent);
-    // A combo box whose popup items are drawn by the stylesheet, so the
-    // dropdown looks the same under every Qt style.
-    static QComboBox* makeComboBox(QWidget* parent);
     void updatePlusSectionState() const;
     void maybeWarnReconnect(const QString& cliOutput);
 
@@ -190,7 +180,8 @@ private:
     static bool setAutoStart(bool enable, QString& errorOut);
     void updateAutoConnectRowVisibility() const;
     void updateAutoConnectServerRow() const;
-    void populateAutoConnectServerCombo() const;
+    // Shows the chosen server on its button.
+    void updateAutoConnectServerButton() const;
 
     void onSettingsReady(const QMap<QString, QString>& settings);
     void setLoading(bool loading);

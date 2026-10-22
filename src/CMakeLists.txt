@@ -59,6 +59,9 @@ set(SOURCES
         cli/natpmpManager.cpp
         cli/statusMonitor.h
         cli/statusMonitor.cpp
+        cli/serverList.h
+        cli/serverListCache.h
+        cli/serverListCache.cpp
         cli/appImageUtils.h
         cli/cliNoiseFilter.h
         cli/cliSession.h
@@ -77,6 +80,9 @@ set(SOURCES
         cli/platformUtils.h
         mainWindow.h
         mainWindow.cpp
+        quickSettingIds.h
+        widgets/cliSettingControls.h
+        widgets/cliSettingControls.cpp
         widgets/elidaLabel.h
         widgets/stackPage.h
         widgets/infoBanner.h
@@ -84,11 +90,25 @@ set(SOURCES
         widgets/globeWidget.h
         widgets/pixmapCache.h
         widgets/globeWidget.cpp
+        widgets/globeAnimationCombo.h
+        widgets/globeAnimationCombo.cpp
         widgets/gripSplitter.h
+        widgets/hintBubble.h
+        widgets/hintBubble.cpp
         widgets/pickerBase.h
         widgets/pickerDrawer.h
         widgets/pickerDrawer.cpp
+        widgets/plusDivider.h
+        widgets/quickSettingSource.h
+        widgets/quickSettingsMenu.h
+        widgets/quickSettingsMenu.cpp
+        widgets/serverContextMenu.h
+        widgets/serverContextMenu.cpp
+        widgets/sortArrowHeader.h
+        widgets/quickSettingsPanel.h
+        widgets/quickSettingsPanel.cpp
         widgets/styleUtils.h
+        widgets/styledComboBox.h
         widgets/svgBanner.h
         widgets/toastNotification.h
         widgets/toggleSwitch.h
@@ -114,8 +134,16 @@ set(SOURCES
         dialogs/aboutDialog.cpp
         dialogs/errorDetailsDialog.h
         dialogs/errorDetailsDialog.cpp
+        dialogs/natpmpcDialog.h
+        dialogs/natpmpcDialog.cpp
         dialogs/quitDialog.h
         dialogs/quitDialog.cpp
+        dialogs/reconnectDialog.h
+        dialogs/reconnectDialog.cpp
+        dialogs/serverPropertiesDialog.h
+        dialogs/serverPropertiesDialog.cpp
+        dialogs/startupServerDialog.h
+        dialogs/startupServerDialog.cpp
         dialogs/updateAvailableDialog.h
         dialogs/updateAvailableDialog.cpp
         dialogs/whatsNewDialog.h
@@ -168,7 +196,33 @@ install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../proton-vpn-sign.svg
         RENAME io.github.wheat32.ProtonVPNQt.svg
 )
 
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../io.github.wheat32.ProtonVPNQt.metainfo.xml
+# The metainfo is generated so its release always matches version.json. The
+# release date is the date of the commit being built: releases are tagged on the
+# commit pushed to main, so for a release it's the day it was published. Without
+# git (e.g. a source archive), it falls back to the build date.
+file(READ ${CMAKE_CURRENT_SOURCE_DIR}/version.json VERSION_JSON)
+string(JSON APP_VERSION GET "${VERSION_JSON}" app_version)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS version.json)
+
+find_package(Git QUIET)
+if(GIT_FOUND)
+    execute_process(COMMAND ${GIT_EXECUTABLE} log -1 --format=%cd --date=short
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            OUTPUT_VARIABLE APP_RELEASE_DATE
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+    )
+endif()
+if("${APP_RELEASE_DATE}" STREQUAL "")
+    string(TIMESTAMP APP_RELEASE_DATE "%Y-%m-%d" UTC)
+endif()
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/../io.github.wheat32.ProtonVPNQt.metainfo.xml.in
+        ${CMAKE_CURRENT_BINARY_DIR}/io.github.wheat32.ProtonVPNQt.metainfo.xml
+        @ONLY
+)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/io.github.wheat32.ProtonVPNQt.metainfo.xml
         DESTINATION share/metainfo
 )
 

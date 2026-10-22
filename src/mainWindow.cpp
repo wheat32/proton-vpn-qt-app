@@ -50,9 +50,10 @@ constexpr int INITIAL_WINDOW_HEIGHT  = 600;
 // the VPN page instead of on its own page.
 constexpr int SPLIT_VIEW_MIN_WINDOW_WIDTH = 1200;
 // Narrowest the two sides of the split view can be dragged to. Together they
-// must fit in the stack at SPLIT_VIEW_MIN_WINDOW_WIDTH.
+// must fit in the stack at SPLIT_VIEW_MIN_WINDOW_WIDTH. The VPN page keeps
+// room for its quick settings.
 constexpr int SPLIT_COUNTRIES_MIN_WIDTH   = 360;
-constexpr int SPLIT_VPN_MIN_WIDTH         = 560;
+constexpr int SPLIT_VPN_MIN_WIDTH         = VpnPage::SPLIT_MIN_WIDTH;
 // How long after the last divider drag its position is saved.
 constexpr int SPLIT_SAVE_DELAY_MS         = 500;
 
@@ -256,7 +257,11 @@ MainWindow::MainWindow(QWidget* parent)
     });
     connect(m_vpnPage, &VpnPage::changeCountryRequested, this, [this]()
     {
-        showPage(Page::Countries);
+        // In the split view the Countries list is already beside the picker.
+        if (m_splitView == false)
+        {
+            showPage(Page::Countries);
+        }
     });
 
     // Countries page (index 4)
@@ -303,6 +308,14 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_settingsPage, &SettingsPage::favoritesCleared,
             m_vpnPage, &VpnPage::refreshFavoritesPicker);
 
+    // The VPN page's quick settings are copies of the Settings page's
+    // controls, chosen there with each setting's right-click menu.
+    m_vpnPage->setQuickSettingSources(m_settingsPage->quickSettingSources());
+    connect(m_settingsPage, &SettingsPage::quickSettingsChanged,
+            m_vpnPage, &VpnPage::updateQuickSettings);
+    connect(m_settingsPage, &SettingsPage::countriesSidebarVisibilityChanged,
+            this, &MainWindow::updateSplitView);
+
     // CLI not responding page (index 7)
     m_cliNotRespondingPage = new CliNotRespondingPage();
     m_stack->addWidget(m_cliNotRespondingPage); // index 7
@@ -320,6 +333,18 @@ MainWindow::MainWindow(QWidget* parent)
             this, &MainWindow::showNotInstalled);
     connect(m_debugPage, &DebugPage::cliNotRespondingPageRequested,
             this, &MainWindow::showCliNotResponding);
+    connect(m_debugPage, &DebugPage::homeWarningRequested,
+            m_vpnPage, &VpnPage::addWarning);
+    // Shown on the home screen only: VpnManager keeps its real state, and the
+    // next real change replaces the error.
+    connect(m_debugPage, &DebugPage::homeErrorRequested, this, [this](const QString& details)
+    {
+        m_vpnPage->onStateChanged(VpnState::Error, details);
+    });
+    connect(m_debugPage, &DebugPage::homeErrorHidden, this, [this]()
+    {
+        m_vpnPage->onStateChanged(m_lastReportedState, m_lastReportedInfo);
+    });
     connect(m_debugPage, &DebugPage::signinScreenRequested,
             this, [this](const SigninPrompt prompt, const QString& error)
     {
@@ -432,6 +457,10 @@ MainWindow::MainWindow(QWidget* parent)
             {
                 m_vpnPage->onStateChanged(state, info);
                 updateTrayIcon(state);
+#ifdef QT_DEBUG
+                m_lastReportedState = state;
+                m_lastReportedInfo  = info;
+#endif
 
                 // Startup auto-connect, decided by the first state the app
                 // learns: connect now if that is Disconnected; otherwise (the
@@ -443,18 +472,9 @@ MainWindow::MainWindow(QWidget* parent)
                 {
                     m_startupAutoConnectPending = false;
                     if (state != VpnState::Disconnected) return;
-                    const QString serverKey = AppConfig::instance().autoConnectServer();
-                    if (serverKey.isEmpty())
-                    {
-                        m_manager->startupAutoConnect();
-                    }
-                    else
-                    {
-                        const int sep = serverKey.indexOf(QLatin1Char('|'));
-                        const QString country = (sep >= 0) ? serverKey.left(sep) : serverKey;
-                        const QString city    = (sep >= 0) ? serverKey.mid(sep + 1) : QString();
-                        m_manager->startupAutoConnect(country, city);
-                    }
+                    const AppConfig::ServerLocation location =
+                        AppConfig::autoConnectServerLocation(AppConfig::instance().autoConnectServer());
+                    m_manager->startupAutoConnect(location.countryCode, location.city);
                 }
             });
 
@@ -607,14 +627,6 @@ void MainWindow::setupSidebar()
 
 void MainWindow::showPage(Page page)
 {
-    // The Countries page has no page of its own while it is part of the split
-    // view, so every way of opening it (nav, "Change country...", leaving the
-    // Debug page) lands on the split view instead.
-    if (page == Page::Countries && m_splitView == true)
-    {
-        page = Page::Vpn;
-    }
-
 #ifdef QT_DEBUG
     // Track where we came from so leaving Debug can return to the right page.
     // A sign-in preview belongs to the Debug page, so leaving it keeps the
@@ -642,6 +654,7 @@ void MainWindow::showPage(Page page)
     m_sidebarDivider->setVisible(onLoginPage == false);
 
     m_stack->setCurrentIndex(std::to_underlying(page));
+    placeCountriesPage();
 
     m_logoBtn->setChecked(page == Page::Vpn);
     m_countriesNavBtn->setChecked(page == Page::Countries);
@@ -675,6 +688,11 @@ void MainWindow::showPage(Page page)
     const bool debugFromLogin = (page == Page::Debug && m_preDebugPage == Page::Login);
     m_debugPage->setLeftPadding(debugFromLogin ? (SIDEBAR_MARGIN + NAV_BTN_SIZE + SIDEBAR_MARGIN) : 0);
 #endif
+
+    if (page == Page::Vpn)
+    {
+        maybeShowPowerButtonHint();
+    }
 }
 
 void MainWindow::showNotInstalled()
@@ -851,34 +869,43 @@ void MainWindow::applySplitView(const bool split)
     if (m_splitView == split) return;
     m_splitView = split;
 
-    QLayout* hostLayout = m_countriesHost->layout();
-    if (split == true)
+    m_vpnPage->setMinimumWidth(split == true ? SPLIT_VPN_MIN_WIDTH : 0);
+    m_vpnPage->setSplitView(split);
+    if (split == false)
     {
-        const bool wasOnCountries = m_stack->currentIndex() == std::to_underlying(Page::Countries);
+        m_splitSaveTimer->stop();
+    }
+    placeCountriesPage();
+}
 
+void MainWindow::placeCountriesPage()
+{
+    // Beside the VPN page in the split view, except while the Countries page
+    // is open on its own from the nav; in its own stack slot otherwise.
+    const bool beside = m_splitView == true
+                     && m_stack->currentIndex() != std::to_underlying(Page::Countries);
+    const bool inSplitter = m_countriesPage->parentWidget() == m_homeSplitter;
+    if (beside == inSplitter) return;
+
+    QLayout* hostLayout = m_countriesHost->layout();
+    m_countriesPage->setSplitView(beside);
+    if (beside == true)
+    {
         hostLayout->removeWidget(m_countriesPage);
         m_countriesPage->setMinimumWidth(SPLIT_COUNTRIES_MIN_WIDTH);
-        m_vpnPage->setMinimumWidth(SPLIT_VPN_MIN_WIDTH);
         m_homeSplitter->insertWidget(0, m_countriesPage);
         m_countriesPage->show();
+        limitCountriesWidth();
         applySplitRatio();
-
-        m_countriesNavBtn->setVisible(false);
-        if (wasOnCountries == true)
-        {
-            showPage(Page::Vpn);
-        }
     }
     else
     {
-        m_splitSaveTimer->stop();
         m_countriesPage->setMinimumWidth(0);
-        m_vpnPage->setMinimumWidth(0);
         // Reparenting takes it out of the splitter.
         m_countriesPage->setParent(m_countriesHost);
         hostLayout->addWidget(m_countriesPage);
         m_countriesPage->show();
-        m_countriesNavBtn->setVisible(true);
+        limitCountriesWidth();
     }
 }
 
@@ -892,10 +919,27 @@ void MainWindow::applySplitRatio()
     m_homeSplitter->setSizes({countriesW, total - countriesW});
 }
 
+void MainWindow::updateSplitView()
+{
+    applySplitView(width() >= SPLIT_VIEW_MIN_WINDOW_WIDTH && AppConfig::instance().showCountriesSidebar() == true);
+    limitCountriesWidth();
+}
+
+void MainWindow::limitCountriesWidth()
+{
+    // A third of the width at most, dragging the divider included: a
+    // splitter keeps to its widgets' maximum widths.
+    const bool beside = m_countriesPage->parentWidget() == m_homeSplitter;
+    const int limit = beside == true
+        ? static_cast<int>((m_stack->width() - m_homeSplitter->handleWidth()) * AppConfig::SPLIT_RATIO_MAX)
+        : QWIDGETSIZE_MAX;
+    m_countriesPage->setMaximumWidth(limit);
+}
+
 void MainWindow::resizeEvent(QResizeEvent* event)
 {
     QWidget::resizeEvent(event);
-    applySplitView(width() >= SPLIT_VIEW_MIN_WINDOW_WIDTH);
+    updateSplitView();
 #ifdef QT_DEBUG
     repositionLoginDebugBtn();
 #endif
@@ -1070,7 +1114,10 @@ void MainWindow::maybeShowWhatsNew()
     }
 
     if (currentVersion.isEmpty())
+    {
+        maybeShowPowerButtonHint();
         return;
+    }
 
     const QString lastSeen = AppConfig::instance().lastSeenVersion();
 
@@ -1083,6 +1130,19 @@ void MainWindow::maybeShowWhatsNew()
 
         auto* dlg = new WhatsNewDialog(currentVersion, this);
         dlg->setModal(true);
+        m_whatsNewDialog = dlg;
+        connect(dlg, &QDialog::finished, this, &MainWindow::maybeShowPowerButtonHint);
         dlg->show();
+        return;
     }
+    maybeShowPowerButtonHint();
+}
+
+void MainWindow::maybeShowPowerButtonHint()
+{
+    // Not before the What's New check, which may open its dialog over the page.
+    if (m_whatsNewShown == false) return;
+    if (m_whatsNewDialog != nullptr && m_whatsNewDialog->isVisible() == true) return;
+    if (m_stack->currentIndex() != std::to_underlying(Page::Vpn)) return;
+    m_vpnPage->showPowerButtonHint();
 }

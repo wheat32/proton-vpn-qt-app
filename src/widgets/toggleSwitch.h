@@ -15,7 +15,10 @@ public:
     explicit ToggleSwitch(QWidget* parent = nullptr);
 
     [[nodiscard]] bool isOn() const { return m_on; }
+    // Sets the state without emitting toggled().
     void setOn(const bool on, const bool animate = true);
+    // Sets the state the way a click would, emitting toggled() if it changes.
+    void setOnAsUser(bool on);
 
     [[nodiscard]] qreal knobPos() const { return m_knobPos; }
 

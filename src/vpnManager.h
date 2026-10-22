@@ -60,6 +60,11 @@ public:
     void applyConfigValueAndReconnect(const QString& key, const QString& value);
     void fetchCountries();
     void fetchCities(const QString& countryCode);
+    // What the last fetchCountries() and each country's last fetchCities()
+    // found, for a list that opens later (the auto-connect server chooser)
+    // to start from without fetching again; empty until then.
+    const QMap<QString, QString>& countries() const { return m_countries; } // name -> code
+    const QMap<QString, QList<QPair<QString, QString>>>& cities() const { return m_cities; } // code -> (city, features)
     void fetchInfo();
     // Asks the CLI for the settings it is using (`protonvpn config list`) and
     // emits settingsReady(). Also runs on its own at sign-in and after every
@@ -134,6 +139,8 @@ private:
     QString     m_lastConnectCountry;    // country arg last passed to connectVpn()
     QString     m_lastConnectCity;       // city    arg last passed to connectVpn()
     QString     m_lastConnectServer;     // server name last connected to by name, e.g. "US-NJ#203"
+    QMap<QString, QString> m_countries;                      // see countries()
+    QMap<QString, QList<QPair<QString, QString>>> m_cities;  // see cities()
     QProcess*       m_signinProcess  = nullptr;
     std::unique_ptr<SigninFlow> m_signinFlow; // the conversation with the running `protonvpn signin`
     int             m_signinAttempt  = 0;     // bumped when a sign-in ends, so late replies are ignored

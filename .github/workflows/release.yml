@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Qt 6 and build dependencies
         run: |
@@ -38,7 +38,7 @@ jobs:
           tar -czf proton-vpn-qt-app-linux-x86_64.tar.gz -C dist proton_vpn_qt
 
       - name: Upload tarball artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: native-tarball
           path: proton-vpn-qt-app-linux-x86_64.tar.gz
@@ -49,7 +49,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Flatpak tools
         run: |
@@ -104,7 +104,7 @@ jobs:
             io.github.wheat32.ProtonVPNQt
 
       - name: Upload Flatpak artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: flatpak-bundle
           path: io.github.wheat32.ProtonVPNQt-x86_64.flatpak
@@ -118,7 +118,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Flatpak tools
         run: |
@@ -173,7 +173,7 @@ jobs:
             io.github.wheat32.ProtonVPNQt
 
       - name: Upload Flatpak artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: flatpak-bundle-arm64
           path: io.github.wheat32.ProtonVPNQt-aarch64.flatpak
@@ -184,7 +184,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install dependencies
         run: |
@@ -207,7 +207,7 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN: "1"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: appimage-standalone
           path: dist/*-standalone-*.AppImage
@@ -227,7 +227,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install dependencies
         run: |
@@ -251,7 +251,7 @@ jobs:
           APPIMAGE_VARIANT_SUFFIX: "compat"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: appimage-standalone-compat
           path: dist/*-standalone-compat-*.AppImage
@@ -267,7 +267,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install dependencies
         run: |
@@ -290,7 +290,7 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN: "1"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: appimage-standalone-arm64
           path: dist/*-standalone-aarch64.AppImage
@@ -301,7 +301,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install dependencies
         run: |
@@ -324,7 +324,7 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN: "1"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: appimage-lite
           path: dist/*-lite-*.AppImage
@@ -337,7 +337,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install dependencies
         run: |
@@ -360,7 +360,7 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN: "1"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: appimage-lite-arm64
           path: dist/*-lite-aarch64.AppImage
@@ -372,7 +372,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install jq
         run: sudo apt-get install -y jq
@@ -386,47 +386,47 @@ jobs:
           echo "NAME=v$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Download native tarball
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: native-tarball
 
       - name: Download Flatpak bundle
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: flatpak-bundle
 
       - name: Download Flatpak bundle (ARM64)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: flatpak-bundle-arm64
 
       - name: Download AppImage (Standalone)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: appimage-standalone
 
       - name: Download AppImage (Standalone Compat)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: appimage-standalone-compat
 
       - name: Download AppImage (Standalone ARM64)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: appimage-standalone-arm64
 
       - name: Download AppImage (Lite)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: appimage-lite
 
       - name: Download AppImage (Lite ARM64)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: appimage-lite-arm64
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.tag.outputs.TAG }}
           name: ${{ steps.tag.outputs.NAME }}

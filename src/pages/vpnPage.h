@@ -3,6 +3,7 @@
 #include <optional>
 #include <tuple>
 #include <QElapsedTimer>
+#include <QPointer>
 #include <QPushButton>
 #include <QTimer>
 #include <QPropertyAnimation>
@@ -17,8 +18,10 @@
 #include "../widgets/pixmapCache.h"
 #include "../widgets/svgBanner.h"
 #include "../widgets/globeWidget.h"
+#include "../widgets/hintBubble.h"
 #include <QGridLayout>
 #include "../dialogs/errorDetailsDialog.h"
+#include "../widgets/quickSettingsPanel.h"
 
 // ---------------------------------------------------------------------------
 // PowerButton
@@ -96,6 +99,7 @@ signals:
 protected:
     bool eventFilter(QObject* obj, QEvent* ev) override;
     void onRowClicked(QListWidgetItem* item) override;
+    [[nodiscard]] RowLocation rowLocation(const QListWidgetItem* item) const override;
 
 private:
     void updateHeader() const;
@@ -129,6 +133,7 @@ signals:
 protected:
     bool eventFilter(QObject* obj, QEvent* ev) override;
     void onRowClicked(QListWidgetItem* item) override;
+    [[nodiscard]] RowLocation rowLocation(const QListWidgetItem* item) const override;
 };
 
 // ---------------------------------------------------------------------------
@@ -149,6 +154,7 @@ signals:
 protected:
     bool eventFilter(QObject* obj, QEvent* ev) override;
     void onRowClicked(QListWidgetItem* item) override;
+    [[nodiscard]] RowLocation rowLocation(const QListWidgetItem* item) const override;
 };
 
 
@@ -160,14 +166,28 @@ class VpnPage : public QWidget
     Q_OBJECT
 
 public:
+    // Beside the Countries list (MainWindow's split view) the quick settings
+    // stay down to a main column this narrow; see setSplitView().
+    static constexpr int SPLIT_MIN_MAIN_WIDTH = 400;
+    // The narrowest the page gets in the split view, so the quick settings
+    // always fit there.
+    static constexpr int SPLIT_MIN_WIDTH = SPLIT_MIN_MAIN_WIDTH + QuickSettingsPanel::PANEL_WIDTH;
+
     explicit VpnPage(VpnManager* manager, QWidget* parent = nullptr);
 
     void onStateChanged(VpnState state, const QString& info);
     // Applies the globe settings: shows or removes it per Globe Animation and
     // the desktop's reduce-motion preference, and sets Pause When Unfocused.
     void applyGlobeSettings();
+    // Points out the power button with a tip, unless one was dismissed before
+    // (see AppConfig::powerButtonHintShown()).
+    void showPowerButtonHint();
     void notifyExternalConnect(const QString& city);
     void refreshRecentPicker() const;
+    // Adds a dismissable warning to the warnings area, which counts it and
+    // clears it with the rest. Returns the banner, which deletes itself once
+    // dismissed.
+    InfoBanner* addWarning(const QString& htmlMessage);
     void refreshFavoritesPicker() const;
     // Called when VpnManager has parsed a city from `protonvpn status`.
     void onStatusCityKnown(const QString& city);
@@ -177,6 +197,14 @@ public:
     void setFavoritesDropdownVisible(bool visible);
     // Called when the favorites-enabled setting changes.
     void setFavoritesEnabled(bool enabled);
+    // The settings the quick settings panel can show: the Settings page's.
+    void setQuickSettingSources(const QList<QuickSettingSource>& sources);
+    // Shows the quick settings now chosen, or hides them all as asked.
+    void updateQuickSettings();
+    // Set while the page shares the window with the Countries list. The
+    // window is wide then, so the quick settings keep showing beside a narrow
+    // main column rather than giving their width back to wide mode.
+    void setSplitView(bool split);
     // Returns true while the natpmpc keep-alive loop is running (port forwarding active).
     bool isPortForwardingActive() const { return m_natPmpManager != nullptr && m_natPmpManager->isRunning(); }
     NatPmpManager* natPmpManager() const { return m_natPmpManager; }
@@ -202,6 +230,8 @@ private:
     bool m_isFreeUser = false;
 
     PowerButton*    m_powerBtn;
+    // The first-launch tip on the power button while it shows.
+    QPointer<HintBubble> m_powerButtonHint;
     QLabel*         m_statusLabel;
     QLabel*         m_infoLabel;
     QLabel*         m_signOutHintLabel;
@@ -213,7 +243,13 @@ private:
     PickerDrawer*     m_drawer           = nullptr;
     QFrame*           m_drawerNotch      = nullptr;
     QLabel*           m_drawerNotchIcon  = nullptr;
+    // Everything but the quick settings panel: the logo, the content and the
+    // dropdowns. Its width is mainWidth().
+    QWidget*          m_mainColumn       = nullptr;
     QVBoxLayout*      m_outerLayout      = nullptr;
+    // The chosen quick settings at the right of the page, shown when the page
+    // is wide enough for them (see updateLayoutForSize()).
+    QuickSettingsPanel* m_quickSettings  = nullptr;
 
     // Wide-mode layout widgets
     QWidget*          m_logoRow              = nullptr;
@@ -234,11 +270,12 @@ private:
     QWidget*          m_rightContent         = nullptr;
     QVBoxLayout*      m_rightContentLayout   = nullptr;
     // Wide mode places the sidebar and the content in a grid, in one of two
-    // arrangements (see updateWideArrangement()).
+    // arrangements (see updateArrangement()).
     QGridLayout*      m_wideGrid             = nullptr;
     bool              m_wideCentered         = false;
     bool              m_arrangementPending   = false;
     bool              m_wideMode             = false;
+    bool              m_splitView            = false; // see setSplitView()
 
     static constexpr int kWideThreshold = 700;
     static constexpr int kWideSidebarW  = 300;
@@ -254,6 +291,8 @@ private:
 
     InfoBanner*     m_versionBanner = nullptr;
     InfoBanner*     m_prereleaseBanner = nullptr;
+    // Every banner in the warnings area, the pre-release one included.
+    QList<InfoBanner*> m_warningBanners;
     QTimer*         m_elapsedTimer;
     QTimer*         m_checkingSpinnerTimer;
     // Monotonic reference for the connection duration display; the label is
@@ -294,12 +333,20 @@ private:
     void stopElapsedTimer() const;
     void showErrorDetails();
     void relayoutPickers(int width = 0) const; // delegates to drawer syncVisibility
+    // The page's width less the quick settings panel, when it is shown. The
+    // narrow and wide modes and the content scale go by this width.
+    [[nodiscard]] int mainWidth() const;
+    // Shows or hides the quick settings and picks the narrow or wide layout
+    // for the page's size.
+    void updateLayoutForSize();
     void applyWideMode(bool wide);
     void repositionDrawer();
     void repositionDrawerNotch(int drawerW);
     void updateDrawerNotchIcon();
     void checkPrereleaseBanner();
     void updateBannerAreaVisibility();
+    // Fits the wide-mode warnings scroll area to the warnings in it.
+    void updateBannerScrollHeight() const;
     // Scales the logo, power button, status text and their spacing with the
     // page size; 1 at the default window size (see vpnPage.cpp).
     void updateContentScale();
@@ -312,11 +359,19 @@ private:
     QString m_globeStatusCountry;
     void updateGlobeTarget();
     void syncInfoBackdrop() const;
-    // Wide mode only: chooses between the content spanning the full width
-    // above the dropdowns and sitting in a column beside them.
-    void updateWideArrangement();
-    // Runs updateWideArrangement() once the pending layout pass is done.
-    void scheduleWideArrangement();
+    // Chooses between the narrow layout and the two wide arrangements: the
+    // content spanning the full width above the expanded dropdowns, or
+    // sitting in a column beside them.
+    void updateArrangement();
+    // Runs updateArrangement() once the pending layout pass is done.
+    void scheduleArrangement();
+    // Whether the content fits above the expanded dropdowns.
+    [[nodiscard]] bool stackedArrangementFits() const;
+    // The height the wide-mode sidebar takes below the content.
+    [[nodiscard]] int stackedSidebarHeight() const;
+    // In wide mode the sidebar holds the dropdowns and the warnings, and
+    // shows when either has anything to show.
+    void updatePickerSidebarVisibility() const;
     void applyFreeUserMode() const;
     void startNatPmpLoop();
     void stopNatPmpLoop();

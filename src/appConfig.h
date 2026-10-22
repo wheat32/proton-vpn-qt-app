@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QString>
+#include <QStringList>
 #include <QMap>
 
 // ---------------------------------------------------------------------------
@@ -29,6 +30,15 @@ public:
     // Empty string means "Fastest Server"; "CC" means fastest in country;
     // "CC|city" means a specific city.  Stored as-is.
     QString autoConnectServer() const;
+    // A location in autoConnectServer()'s format, and back: both parts empty
+    // for the fastest server anywhere, the city empty for a country's fastest.
+    struct ServerLocation
+    {
+        QString countryCode;
+        QString city;
+    };
+    static QString autoConnectServerKey(const ServerLocation& location);
+    static ServerLocation autoConnectServerLocation(const QString& key);
     bool notifications() const;
     int  recentConnectionsCount() const;
     bool startHidden() const;
@@ -44,10 +54,25 @@ public:
     static GlobeAnimation globeAnimationFromName(const QString& name);
     bool showLocationPicker() const;
     bool showFavoritesDropdown() const;
+    // Whether the VPN page shows the Countries list beside it in a wide
+    // window, and its quick settings.
+    bool showCountriesSidebar() const;
+    bool showQuickSettings() const;
+    // The settings the VPN page's quick settings show, by the names in
+    // quickSettingIds.h: at most QUICK_SETTINGS_MAX, in no particular order.
+    QStringList quickSettings() const;
+    // The quick settings the app starts with, and goes back to on a restore.
+    static QStringList defaultQuickSettings();
     bool favoritesEnabled() const;
     QString lastSeenVersion() const;
+    // Whether the VPN page's tip pointing out the power button was dismissed.
+    // The tip is for a first launch, so a config written before the setting
+    // existed counts as dismissed.
+    bool powerButtonHintShown() const;
     bool checkForUpdates() const;
     bool logToFile() const;
+    // Verbose output (see VerboseLog in debug.h).
+    bool verboseLogging() const;
     // Share of the width (0-1) the Countries list takes in the split view.
     double splitViewCountriesRatio() const;
 
@@ -62,16 +87,27 @@ public:
     void setGlobePauseWhenUnfocused(bool value);
     void setShowLocationPicker(bool value);
     void setShowFavoritesDropdown(bool value);
+    void setShowCountriesSidebar(bool value);
+    void setShowQuickSettings(bool value);
+    // Drops repeats and anything past QUICK_SETTINGS_MAX.
+    void setQuickSettings(const QStringList& value);
     void setFavoritesEnabled(bool value);
     void setLastSeenVersion(const QString& value);
+    void setPowerButtonHintShown(bool value);
     void setCheckForUpdates(bool value);
     void setLogToFile(bool value);
+    void setVerboseLogging(bool value);
     // Clamped to [SPLIT_RATIO_MIN, SPLIT_RATIO_MAX].
     void setSplitViewCountriesRatio(double value);
 
-    static constexpr double SPLIT_RATIO_DEFAULT = 0.4;
+    // The Countries list takes at most a third of the width, which is also
+    // where it starts.
     static constexpr double SPLIT_RATIO_MIN     = 0.2;
-    static constexpr double SPLIT_RATIO_MAX     = 0.7;
+    static constexpr double SPLIT_RATIO_MAX     = 1.0 / 3.0;
+    static constexpr double SPLIT_RATIO_DEFAULT = SPLIT_RATIO_MAX;
+
+    // As many as the quick settings show without scrolling.
+    static constexpr int QUICK_SETTINGS_MAX = 12;
 
     // Resets every setting to its compile-time default and deletes the config
     // file. The in-memory state is usable immediately; the file will not be
@@ -98,8 +134,13 @@ private:
     bool m_globePauseWhenUnfocused = false;
     bool m_showLocationPicker = true;
     bool m_showFavoritesDropdown = true;
+    bool m_showCountriesSidebar = true;
+    bool m_showQuickSettings = true;
+    QStringList m_quickSettings = defaultQuickSettings();
     bool m_favoritesEnabled = true;
     QString m_lastSeenVersion;
+    bool m_powerButtonHintShown = false;
     bool m_checkForUpdates = true;
     bool m_logToFile = false;
+    bool m_verboseLogging = false;
 };

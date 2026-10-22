@@ -845,6 +845,7 @@ void VpnManager::fetchCountries()
             if (cells.size() < MIN_COUNTRY_PARTS) continue;
             countries.insert(cells.first(), cells.last());
         }
+        m_countries = countries;
         emit countriesReady(countries);
     });
 }
@@ -856,7 +857,9 @@ void VpnManager::fetchCities(const QString& countryCode)
                {
                    if (exitCode != 0)
                        return; // not authenticated or other error - don't overwrite with an empty list
-                   emit citiesReady(countryCode, parseCities(out + QLatin1Char('\n') + err));
+                   const QList<QPair<QString, QString>> cities = parseCities(out + QLatin1Char('\n') + err);
+                   m_cities.insert(countryCode, cities);
+                   emit citiesReady(countryCode, cities);
                });
 }
 

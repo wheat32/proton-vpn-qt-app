@@ -1,10 +1,10 @@
 #pragma once
 
 // gripSplitter.h
-// A horizontal QSplitter whose handle makes it obvious that it can be dragged:
-// the usual thin divider line with a grip in the middle, both highlighted in
-// the accent color on hover and while dragging. Double-clicking the handle
-// emits GripSplitter::handleDoubleClicked(), e.g. to restore a default size.
+// A QSplitter whose handle makes it obvious that it can be dragged: the usual
+// thin divider line with a grip in the middle, both highlighted in the accent
+// color on hover and while dragging. Double-clicking the handle emits
+// GripSplitter::handleDoubleClicked(), e.g. to restore a default size.
 
 #include <QEnterEvent>
 #include <QEvent>
@@ -19,7 +19,8 @@ class GripSplitterHandle : public QSplitterHandle
     Q_OBJECT
 
 public:
-    // Odd, so the 1 px line and the grip share an exact center pixel column.
+    // Odd, so the 1 px line and the grip share an exact center pixel column
+    // (or row, between widgets stacked vertically).
     static constexpr int HANDLE_WIDTH = 9;
 
     GripSplitterHandle(const Qt::Orientation orientation, QSplitter* parent)
@@ -56,19 +57,32 @@ protected:
         const QColor lineColor = palette().color(active ? QPalette::Highlight : QPalette::Mid);
         const QColor gripColor = palette().color(active ? QPalette::Highlight : QPalette::PlaceholderText);
 
-        // Divider line down the middle, drawn as a filled column so it stays
-        // a crisp 1 px instead of an antialiased 2 px smear.
-        const int centerX = width() / 2;
-        p.fillRect(centerX, 0, LINE_WIDTH, height(), lineColor);
-
-        // Grip over the line, centered on the same pixel column.
+        // Divider line along the middle of the handle, drawn as a filled
+        // column (or row) so it stays a crisp 1 px instead of an antialiased
+        // 2 px smear, and the grip over it, centered on the same pixels. A
+        // horizontal splitter has its widgets side by side, so its line runs
+        // top to bottom.
+        QRectF grip;
+        if (orientation() == Qt::Horizontal)
+        {
+            const int centerX = width() / 2;
+            p.fillRect(centerX, 0, LINE_WIDTH, height(), lineColor);
+            grip = QRectF(centerX + LINE_WIDTH / 2.0 - GRIP_THICKNESS / 2.0,
+                          (height() - GRIP_LENGTH) / 2.0,
+                          GRIP_THICKNESS, GRIP_LENGTH);
+        }
+        else
+        {
+            const int centerY = height() / 2;
+            p.fillRect(0, centerY, width(), LINE_WIDTH, lineColor);
+            grip = QRectF((width() - GRIP_LENGTH) / 2.0,
+                          centerY + LINE_WIDTH / 2.0 - GRIP_THICKNESS / 2.0,
+                          GRIP_LENGTH, GRIP_THICKNESS);
+        }
         p.setRenderHint(QPainter::Antialiasing);
         p.setPen(Qt::NoPen);
         p.setBrush(gripColor);
-        const QRectF grip(centerX + LINE_WIDTH / 2.0 - GRIP_WIDTH / 2.0,
-                          (height() - GRIP_HEIGHT) / 2.0,
-                          GRIP_WIDTH, GRIP_HEIGHT);
-        p.drawRoundedRect(grip, GRIP_WIDTH / 2.0, GRIP_WIDTH / 2.0);
+        p.drawRoundedRect(grip, GRIP_THICKNESS / 2.0, GRIP_THICKNESS / 2.0);
     }
 
     void enterEvent(QEnterEvent* event) override
@@ -115,9 +129,9 @@ protected:
     }
 
 private:
-    static constexpr int GRIP_WIDTH  = 5;
-    static constexpr int GRIP_HEIGHT = 36;
-    static constexpr int LINE_WIDTH  = 1;
+    static constexpr int GRIP_THICKNESS = 5;
+    static constexpr int GRIP_LENGTH    = 36;
+    static constexpr int LINE_WIDTH     = 1;
 
     bool m_dragging = false;
 };
@@ -128,7 +142,12 @@ class GripSplitter : public QSplitter
 
 public:
     explicit GripSplitter(QWidget* parent = nullptr)
-        : QSplitter(Qt::Horizontal, parent)
+        : GripSplitter(Qt::Horizontal, parent)
+    {
+    }
+
+    explicit GripSplitter(const Qt::Orientation orientation, QWidget* parent = nullptr)
+        : QSplitter(orientation, parent)
     {
         // Set explicitly: it takes precedence over the 1 px width the global
         // QSplitter::handle rule in the stylesheets gives other splitters.

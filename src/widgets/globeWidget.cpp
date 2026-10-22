@@ -32,8 +32,10 @@ constexpr qint64 MAX_TICK_GAP_MS = 200;
 
 constexpr double MS_PER_SECOND         = 1000.0;
 
-// Size of the globe relative to the page's shorter side.
+// Size of the globe relative to the page's shorter side, and the smallest it
+// gets: below that a small window cuts it off at the edges instead.
 constexpr qreal DIAMETER_FACTOR = 0.92;
+constexpr qreal MIN_DIAMETER    = 600.0;
 
 // Render resolution: the disc's size in device pixels, rounded to a step so a
 // window drag does not rebuild the renderer's tables on every pixel, and
@@ -225,9 +227,14 @@ void GlobeWidget::updateColors()
     m_frameValid = false;
 }
 
+qreal GlobeWidget::wantedDiameter() const
+{
+    return std::max(std::min(width(), height()) * DIAMETER_FACTOR, MIN_DIAMETER);
+}
+
 int GlobeWidget::renderSize() const
 {
-    const qreal wanted = std::min(width(), height()) * DIAMETER_FACTOR * devicePixelRatioF();
+    const qreal wanted = wantedDiameter() * devicePixelRatioF();
     return std::clamp(static_cast<int>(std::lround(wanted / RENDER_SIZE_STEP)) * RENDER_SIZE_STEP,
                       MIN_RENDER_SIZE, MAX_RENDER_SIZE);
 }
@@ -238,15 +245,15 @@ QRectF GlobeWidget::discRect() const
     const int size = renderSize();
     // Shown at exactly the rendered size, on whole device pixels, so drawing
     // it is a plain copy. Only when the render size is capped (a very large
-    // window) is it scaled up instead.
+    // window, or a high-DPI screen) is it scaled up instead.
     const qreal diameter = (size < MAX_RENDER_SIZE)
         ? size / dpr
-        : std::min(width(), height()) * DIAMETER_FACTOR;
+        : wantedDiameter();
     QPointF center = QRectF(rect()).center();
     if (m_anchor.isNull() == false && parentWidget() != nullptr)
     {
         // Through the shared parent: mapTo() only maps to an ancestor.
-        center = mapFromParent(m_anchor->mapTo(parentWidget(), QRectF(m_anchor->rect()).center()));
+        center.setX(mapFromParent(m_anchor->mapTo(parentWidget(), QRectF(m_anchor->rect()).center())).x());
     }
     const qreal left = std::round((center.x() - diameter / 2.0) * dpr) / dpr;
     const qreal top  = std::round((center.y() - diameter / 2.0) * dpr) / dpr;

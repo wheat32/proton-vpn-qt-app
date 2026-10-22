@@ -2,12 +2,14 @@
 #include <QFile>
 // ReSharper disable once CppUnusedIncludeDirective
 #include <QJsonDocument> // Ignore unused include warning; we do use QJsonDocument
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QStandardPaths>
 #include "appConfig.h"
 #include "debug.h"
 #include "fileLogger.h"
 #include "jsonFile.h"
+#include "quickSettingIds.h"
 
 namespace
 {
@@ -15,10 +17,20 @@ QString configFile() { return AppConfig::configDir() + QStringLiteral("/app.json
 
 constexpr int DEFAULT_RECENT_CONNECTIONS_COUNT = 5;
 
+// Between the country code and the city in auto_connect_server.
+constexpr QLatin1StringView AUTO_CONNECT_SERVER_SEPARATOR("|");
+
 // How the settings log writes a boolean.
 QString boolText(const bool value)
 {
     return value == true ? QStringLiteral("true") : QStringLiteral("false");
+}
+
+// The quick settings as they may be kept: each once, and no more than fit.
+QStringList normalizedQuickSettings(QStringList ids)
+{
+    ids.removeDuplicates();
+    return ids.mid(0, AppConfig::QUICK_SETTINGS_MAX);
 }
 } // namespace
 
@@ -110,10 +122,29 @@ void AppConfig::load()
     m_closeToTray = obj.value(QStringLiteral("close_to_tray")).toBool(true);
     m_showLocationPicker = obj.value(QStringLiteral("show_location_picker")).toBool(true);
     m_showFavoritesDropdown = obj.value(QStringLiteral("show_favorites_dropdown")).toBool(true);
+    m_showCountriesSidebar = obj.value(QStringLiteral("show_countries_sidebar")).toBool(true);
+    m_showQuickSettings = obj.value(QStringLiteral("show_quick_settings")).toBool(true);
+    // Missing until the quick settings are first changed; an empty list is
+    // the user's choice of none.
+    if (obj.contains(QStringLiteral("quick_settings")) == true)
+    {
+        QStringList ids;
+        for (const QJsonValue& id : obj.value(QStringLiteral("quick_settings")).toArray())
+        {
+            ids << id.toString();
+        }
+        ids.removeAll(QString());
+        m_quickSettings = normalizedQuickSettings(ids);
+    }
     m_favoritesEnabled = obj.value(QStringLiteral("favorites_enabled")).toBool(true);
     m_lastSeenVersion = obj.value(QStringLiteral("last_seen_version")).toString();
+    // Missing from a config an earlier version wrote: that user has launched
+    // the app before, so the first-launch tip is not for them.
+    m_powerButtonHintShown = obj.value(QStringLiteral("power_button_hint_shown")).toBool(true);
     m_checkForUpdates = obj.value(QStringLiteral("check_for_updates")).toBool(true);
     m_logToFile = obj.value(QStringLiteral("log_to_file")).toBool(false);
+    m_verboseLogging = obj.value(QStringLiteral("verbose_logging")).toBool(false);
+    VerboseLog::setSetting(m_verboseLogging);
     // Clamped on read too: the file is user-editable, and a ratio outside the
     // range would squeeze one side of the split view to nothing.
     m_splitViewCountriesRatio = std::clamp(
@@ -149,10 +180,15 @@ void AppConfig::logLoadedConfig() const
     DBG_SETTINGS(QStringLiteral("  close_to_tray            = ") + boolText(m_closeToTray));
     DBG_SETTINGS(QStringLiteral("  show_location_picker     = ") + boolText(m_showLocationPicker));
     DBG_SETTINGS(QStringLiteral("  show_favorites_dropdown  = ") + boolText(m_showFavoritesDropdown));
+    DBG_SETTINGS(QStringLiteral("  show_countries_sidebar   = ") + boolText(m_showCountriesSidebar));
+    DBG_SETTINGS(QStringLiteral("  show_quick_settings      = ") + boolText(m_showQuickSettings));
+    DBG_SETTINGS(QStringLiteral("  quick_settings           = ") + m_quickSettings.join(QStringLiteral(", ")));
     DBG_SETTINGS(QStringLiteral("  favorites_enabled        = ") + boolText(m_favoritesEnabled));
     DBG_SETTINGS(QStringLiteral("  last_seen_version        = ") + m_lastSeenVersion);
+    DBG_SETTINGS(QStringLiteral("  power_button_hint_shown  = ") + boolText(m_powerButtonHintShown));
     DBG_SETTINGS(QStringLiteral("  check_for_updates        = ") + boolText(m_checkForUpdates));
     DBG_SETTINGS(QStringLiteral("  log_to_file              = ") + boolText(m_logToFile));
+    DBG_SETTINGS(QStringLiteral("  verbose_logging          = ") + boolText(m_verboseLogging));
     DBG_SETTINGS(QStringLiteral("  split_view_countries_ratio = ") + QString::number(m_splitViewCountriesRatio));
     DBG_SETTINGS(QStringLiteral("  theme                    = ") + themeName(m_theme));
     DBG_SETTINGS(QStringLiteral("  globe_animation          = ") + globeAnimationName(m_globeAnimation));
@@ -173,13 +209,18 @@ bool AppConfig::save() const
     obj[QStringLiteral("close_to_tray")] = m_closeToTray;
     obj[QStringLiteral("show_location_picker")] = m_showLocationPicker;
     obj[QStringLiteral("show_favorites_dropdown")] = m_showFavoritesDropdown;
+    obj[QStringLiteral("show_countries_sidebar")] = m_showCountriesSidebar;
+    obj[QStringLiteral("show_quick_settings")] = m_showQuickSettings;
+    obj[QStringLiteral("quick_settings")] = QJsonArray::fromStringList(m_quickSettings);
     obj[QStringLiteral("favorites_enabled")] = m_favoritesEnabled;
     if (m_lastSeenVersion.isEmpty() == false)
     {
         obj[QStringLiteral("last_seen_version")] = m_lastSeenVersion;
     }
+    obj[QStringLiteral("power_button_hint_shown")] = m_powerButtonHintShown;
     obj[QStringLiteral("check_for_updates")] = m_checkForUpdates;
     obj[QStringLiteral("log_to_file")] = m_logToFile;
+    obj[QStringLiteral("verbose_logging")] = m_verboseLogging;
     obj[QStringLiteral("split_view_countries_ratio")] = m_splitViewCountriesRatio;
     obj[QStringLiteral("globe_animation")] = globeAnimationName(m_globeAnimation);
     obj[QStringLiteral("globe_pause_when_unfocused")] = m_globePauseWhenUnfocused;
@@ -192,6 +233,28 @@ bool AppConfig::save() const
 bool AppConfig::autoConnect() const { return m_autoConnect; }
 
 QString AppConfig::autoConnectServer() const { return m_autoConnectServer; }
+
+// static
+QString AppConfig::autoConnectServerKey(const ServerLocation& location)
+{
+    if (location.city.isEmpty() == true)
+    {
+        return location.countryCode;
+    }
+    return location.countryCode + AUTO_CONNECT_SERVER_SEPARATOR + location.city;
+}
+
+// static
+AppConfig::ServerLocation AppConfig::autoConnectServerLocation(const QString& key)
+{
+    const qsizetype separator = key.indexOf(AUTO_CONNECT_SERVER_SEPARATOR);
+    if (separator < 0)
+    {
+        return {.countryCode = key, .city = QString()};
+    }
+    return {.countryCode = key.left(separator),
+            .city = key.mid(separator + AUTO_CONNECT_SERVER_SEPARATOR.size())};
+}
 
 void AppConfig::setAutoConnect(const bool value)
 {
@@ -309,6 +372,53 @@ void AppConfig::setShowFavoritesDropdown(const bool value)
     (void)save();
 }
 
+bool AppConfig::showCountriesSidebar() const { return m_showCountriesSidebar; }
+
+void AppConfig::setShowCountriesSidebar(const bool value)
+{
+    if (m_showCountriesSidebar == value) return;
+    DBG_SETTINGS(QStringLiteral("Setting changed: show_countries_sidebar = ") + boolText(value));
+    m_showCountriesSidebar = value;
+    (void)save();
+}
+
+bool AppConfig::showQuickSettings() const { return m_showQuickSettings; }
+
+void AppConfig::setShowQuickSettings(const bool value)
+{
+    if (m_showQuickSettings == value) return;
+    DBG_SETTINGS(QStringLiteral("Setting changed: show_quick_settings = ") + boolText(value));
+    m_showQuickSettings = value;
+    (void)save();
+}
+
+QStringList AppConfig::quickSettings() const { return m_quickSettings; }
+
+// static
+QStringList AppConfig::defaultQuickSettings()
+{
+    return {
+        QuickSettingIds::IPV6,
+        QuickSettingIds::KILL_SWITCH,
+        QuickSettingIds::NAT_TYPE,
+        QuickSettingIds::NETSHIELD,
+        QuickSettingIds::PORT_FORWARDING,
+        QuickSettingIds::GLOBE_ANIMATION,
+        QuickSettingIds::SHOW_COUNTRIES,
+        QuickSettingIds::SHOW_LOCATION_PICKER,
+        QuickSettingIds::SHOW_FAVORITES_DROPDOWN,
+    };
+}
+
+void AppConfig::setQuickSettings(const QStringList& value)
+{
+    const QStringList normalized = normalizedQuickSettings(value);
+    if (m_quickSettings == normalized) return;
+    DBG_SETTINGS(QStringLiteral("Setting changed: quick_settings = ") + normalized.join(QStringLiteral(", ")));
+    m_quickSettings = normalized;
+    (void)save();
+}
+
 bool AppConfig::favoritesEnabled() const { return m_favoritesEnabled; }
 
 void AppConfig::setFavoritesEnabled(const bool value)
@@ -326,6 +436,16 @@ void AppConfig::setLastSeenVersion(const QString& value)
     if (m_lastSeenVersion == value) return;
     DBG_SETTINGS(QStringLiteral("Setting changed: last_seen_version = ") + value);
     m_lastSeenVersion = value;
+    (void)save();
+}
+
+bool AppConfig::powerButtonHintShown() const { return m_powerButtonHintShown; }
+
+void AppConfig::setPowerButtonHintShown(const bool value)
+{
+    if (m_powerButtonHintShown == value) return;
+    DBG_SETTINGS(QStringLiteral("Setting changed: power_button_hint_shown = ") + boolText(value));
+    m_powerButtonHintShown = value;
     (void)save();
 }
 
@@ -350,6 +470,17 @@ void AppConfig::setLogToFile(const bool value)
     FileLogger::instance().setEnabled(value);
 }
 
+bool AppConfig::verboseLogging() const { return m_verboseLogging; }
+
+void AppConfig::setVerboseLogging(const bool value)
+{
+    if (m_verboseLogging == value) return;
+    DBG_SETTINGS(QStringLiteral("Setting changed: verbose_logging = ") + boolText(value));
+    m_verboseLogging = value;
+    (void)save();
+    VerboseLog::setSetting(value);
+}
+
 void AppConfig::resetToDefaults()
 {
     DBG_SETTINGS(QStringLiteral("AppConfig::resetToDefaults() - deleting config file and resetting all values"));
@@ -367,13 +498,19 @@ void AppConfig::resetToDefaults()
     m_theme                  = Theme::System;
     m_showLocationPicker     = true;
     m_showFavoritesDropdown  = true;
+    m_showCountriesSidebar   = true;
+    m_showQuickSettings      = true;
+    m_quickSettings          = defaultQuickSettings();
     m_favoritesEnabled       = true;
     m_lastSeenVersion        = QString();
+    m_powerButtonHintShown   = false;
     m_checkForUpdates        = true;
     m_logToFile              = false;
+    m_verboseLogging         = false;
     m_splitViewCountriesRatio = SPLIT_RATIO_DEFAULT;
     m_globeAnimation          = GlobeAnimation::Auto;
     m_globePauseWhenUnfocused = false;
     FileLogger::instance().setEnabled(false);
+    VerboseLog::setSetting(false);
 }
 

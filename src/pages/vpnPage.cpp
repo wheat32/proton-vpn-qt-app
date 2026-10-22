@@ -7,6 +7,7 @@
 #include "../motionPreference.h"
 #include "../themeManager.h"
 #include "../globe/countryCenters.h"
+#include "../widgets/serverContextMenu.h"
 #include "../widgets/svgBanner.h"
 #include "../widgets/starButton.h"
 #include "../widgets/styleUtils.h"
@@ -29,6 +30,7 @@
 #include <QVersionNumber>
 #include <algorithm>
 #include <cmath>
+#include <initializer_list>
 
 // ============================================================
 // PowerButton implementation
@@ -90,7 +92,7 @@ constexpr qreal MAX_CONTENT_SCALE          = 2.0;
 constexpr qreal CONTENT_SCALE_STEP         = 0.05;
 constexpr int   LOGO_MAX_WIDTH             = 500;
 // Minimum space left between the content and the dropdowns below it before
-// wide mode stops centering the content on the full page width.
+// wide mode stops centering the content on the main column's full width.
 constexpr int   CENTERED_CONTENT_GAP       = 16;
 // Label property holding the font style.qss gives the label (see scaleLabelFont()).
 constexpr const char* BASE_FONT_PROPERTY   = "baseFont";
@@ -502,6 +504,18 @@ void LocationPicker::onRowClicked(QListWidgetItem* item)
     emit selectionChanged(m_selectedCity);
 }
 
+PickerBase::RowLocation LocationPicker::rowLocation(const QListWidgetItem* item) const
+{
+    // Every row is a city of the one country, or its fastest server, but
+    // for the "Change country" action.
+    const QString city = item->data(Qt::UserRole).toString();
+    if (city == QLatin1String("__change_country__"))
+    {
+        return {};
+    }
+    return {.countryCode = m_countryCode, .countryName = m_countryName, .city = city};
+}
+
 void LocationPicker::updateHeader() const
 {
     if (m_selectedCity.isEmpty() == false)
@@ -784,6 +798,13 @@ bool RecentPicker::eventFilter(QObject* obj, QEvent* ev)
     return PickerBase::eventFilter(obj, ev);
 }
 
+PickerBase::RowLocation RecentPicker::rowLocation(const QListWidgetItem* item) const
+{
+    const QString code = item->data(Qt::UserRole).toString();
+    return {.countryCode = code, .countryName = GeoUtils::countryCodeToName(code),
+            .city = item->data(Qt::UserRole + 1).toString()};
+}
+
 void RecentPicker::onRowClicked(QListWidgetItem* item)
 {
     const QString code = item->data(Qt::UserRole).toString();
@@ -824,6 +845,8 @@ void FavoritesPicker::refresh()
     {
         m_bottomLine->setText(tr("None yet"));
         m_chevron->setVisible(false);
+        // The last one was taken out with the list open.
+        closePopup();
         return;
     }
 
@@ -861,6 +884,13 @@ bool FavoritesPicker::eventFilter(QObject* obj, QEvent* ev)
     return PickerBase::eventFilter(obj, ev);
 }
 
+PickerBase::RowLocation FavoritesPicker::rowLocation(const QListWidgetItem* item) const
+{
+    const QString code = item->data(Qt::UserRole).toString();
+    return {.countryCode = code, .countryName = GeoUtils::countryCodeToName(code),
+            .city = item->data(Qt::UserRole + 1).toString()};
+}
+
 void FavoritesPicker::onRowClicked(QListWidgetItem* item)
 {
     const QString code = item->data(Qt::UserRole).toString();
@@ -882,16 +912,9 @@ VpnPage::VpnPage(VpnManager* manager, QWidget* parent)
     : QWidget(parent), m_manager(manager),
       m_localCountryCode(GeoUtils::detectUserCountry())
 {
-    QVBoxLayout* outerLayout = new QVBoxLayout(this);
-    m_outerLayout = outerLayout;
-    outerLayout->setSpacing(0);
-    // No left margin here - logo and power button span the full page width so they
-    // are visually centered.  The COLLAPSED_DRAWER_WIDTH offset is applied only to the scroll
-    // area via m_scrollOffsetWidget, keeping content clear of the drawer overlay.
-    outerLayout->setContentsMargins(0, 0, 0, 0);
-
     // Background globe: created first so every other child stacks above it.
-    // Not in the layout; resizeEvent() keeps it covering the whole page.
+    // Not in the layout; resizeEvent() keeps it covering the whole page, the
+    // quick settings included.
     m_globe = new GlobeWidget(this);
     if (m_localCountryCode.isEmpty() == false)
     {
@@ -901,6 +924,28 @@ VpnPage::VpnPage(VpnManager* manager, QWidget* parent)
             m_globe->setSpinLongitude(home->longitude);
         }
     }
+
+    // The main column, with the quick settings beside it once resizeEvent()
+    // finds the page wide enough.
+    QHBoxLayout* rootLayout = new QHBoxLayout(this);
+    rootLayout->setContentsMargins(0, 0, 0, 0);
+    rootLayout->setSpacing(0);
+    m_mainColumn = new QWidget(this);
+    rootLayout->addWidget(m_mainColumn, 1);
+
+    // Filled in by setQuickSettingSources().
+    m_quickSettings = new QuickSettingsPanel(m_manager, this);
+    m_quickSettings->setVisible(false);
+    rootLayout->addWidget(m_quickSettings);
+    connect(m_quickSettings, &QuickSettingsPanel::quickSettingsChanged, this, &VpnPage::updateQuickSettings);
+
+    QVBoxLayout* outerLayout = new QVBoxLayout(m_mainColumn);
+    m_outerLayout = outerLayout;
+    outerLayout->setSpacing(0);
+    // No left margin here - logo and power button span the full column width so they
+    // are visually centered.  The COLLAPSED_DRAWER_WIDTH offset is applied only to the scroll
+    // area via m_scrollOffsetWidget, keeping content clear of the drawer overlay.
+    outerLayout->setContentsMargins(0, 0, 0, 0);
 
     //  Logo row - always at the top, full width
     m_logoRow = new QWidget(this);
@@ -928,6 +973,12 @@ VpnPage::VpnPage(VpnManager* manager, QWidget* parent)
     m_powerBtn = new PowerButton(m_topContentWidget);
     connect(m_powerBtn, &PowerButton::clicked, this, [this]()
     {
+        // Using the button is what the tip asks for, so it has done its job.
+        if (m_powerButtonHint != nullptr)
+        {
+            m_powerButtonHint->dismiss();
+        }
+
         if (m_currentState == VpnState::Connected)
         {
             emit disconnectRequested();
@@ -987,6 +1038,17 @@ VpnPage::VpnPage(VpnManager* manager, QWidget* parent)
     // Favorites picker
     m_favoritesPicker = new FavoritesPicker(this);
     connect(m_favoritesPicker, &FavoritesPicker::connectionSelected, this, onPickerSelection);
+
+    // Right-clicking a location in any of them offers to favorite it or show
+    // its properties.
+    for (PickerBase* picker : std::initializer_list<PickerBase*>{m_locationPicker, m_recentPicker, m_favoritesPicker})
+    {
+        connect(picker, &PickerBase::rowContextMenuRequested, this,
+                [this, picker](const QString& code, const QString& name, const QString& city, const QPoint& globalPos)
+        {
+            ServerContextMenu::exec(m_manager, code, name, city, globalPos, window(), picker->popupWindow());
+        });
+    }
 
     // Auto-refresh favorites picker when favorites change
     connect(&FavoritesManager::instance(), &FavoritesManager::changed,
@@ -1070,6 +1132,9 @@ VpnPage::VpnPage(VpnManager* manager, QWidget* parent)
     m_scrollArea->setObjectName(QStringLiteral("vpnScrollArea"));
     m_scrollArea->setWidget(scrollContent);
     m_scrollArea->setWidgetResizable(true);
+    // The info label is sized to the viewport (see syncInfoBackdrop()), which
+    // a switch between the narrow and wide layouts resizes after the fact.
+    m_scrollArea->viewport()->installEventFilter(this);
     m_scrollArea->setFrameShape(QFrame::NoFrame);
     m_scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
@@ -1106,7 +1171,7 @@ VpnPage::VpnPage(VpnManager* manager, QWidget* parent)
 
     // A grid rather than a row, so the content can either sit in a column beside
     // the dropdown sidebar or span the full width above it when the page is tall
-    // enough (see updateWideArrangement()).
+    // enough (see updateArrangement()).
     m_wideGrid = new QGridLayout(m_wideContent);
     m_wideGrid->setContentsMargins(0, 0, 0, 0);
     m_wideGrid->setSpacing(0);
@@ -1282,7 +1347,9 @@ VpnPage::VpnPage(VpnManager* manager, QWidget* parent)
             ? tr("Fastest server")
             : GeoUtils::cityWithRegion(m_localCountryCode, city);
 
-        QDialog* dlg = new QDialog(this);
+        // Over the window: the page's stylesheet clears the background of
+        // every widget inside the page, so a dialog parented here showed black.
+        QDialog* dlg = new QDialog(window());
         dlg->setWindowTitle(tr("Change Location?"));
         dlg->setAttribute(Qt::WA_DeleteOnClose);
         dlg->setModal(true);
@@ -1427,9 +1494,11 @@ void VpnPage::buildBannerArea(QVBoxLayout* scrollLayout)
     m_clearAllBannersBtn->setCursor(Qt::PointingHandCursor);
     connect(m_clearAllBannersBtn, &QPushButton::clicked, this, [this]()
     {
-        if (m_prereleaseBanner != nullptr)
+        // A copy: each dismissal takes its banner out of the list.
+        const QList<InfoBanner*> warnings = m_warningBanners;
+        for (InfoBanner* warning : warnings)
         {
-            m_prereleaseBanner->dismiss();
+            warning->dismiss();
         }
     });
     bannerHeaderLayout->addWidget(m_warningsHeaderLabel);
@@ -1493,12 +1562,12 @@ void VpnPage::buildDrawer()
 
     connect(m_drawer, &PickerDrawer::pickerAvailabilityChanged, this, [this](bool hasAny)
     {
+        // A dropdown appearing or going can decide whether they all fit
+        // expanded below the content.
+        scheduleArrangement();
         if (m_wideMode == true)
         {
-            if (m_pickerSidebar != nullptr)
-            {
-                m_pickerSidebar->setVisible(hasAny);
-            }
+            updatePickerSidebarVisibility();
         }
         else
         {
@@ -1577,6 +1646,18 @@ void VpnPage::setFavoritesEnabled(const bool enabled)
     relayoutPickers();
 }
 
+void VpnPage::setQuickSettingSources(const QList<QuickSettingSource>& sources)
+{
+    m_quickSettings->setSources(sources);
+    updateLayoutForSize();
+}
+
+void VpnPage::updateQuickSettings()
+{
+    m_quickSettings->rebuild();
+    updateLayoutForSize();
+}
+
 void VpnPage::setLocationPickerVisible(const bool visible)
 {
     if (m_locationPicker != nullptr)
@@ -1594,6 +1675,11 @@ void VpnPage::relayoutPickers(int /*width*/) const
         m_drawer->syncVisibility(m_isFreeUser, m_showFavoritesDropdown,
                                  AppConfig::instance().favoritesEnabled());
     }
+}
+
+int VpnPage::mainWidth() const
+{
+    return m_quickSettings->isHidden() == true ? width() : width() - QuickSettingsPanel::PANEL_WIDTH;
 }
 
 void VpnPage::repositionDrawer()
@@ -1646,6 +1732,7 @@ void VpnPage::applyWideMode(bool wide)
                 {
                     bal->addWidget(m_vpnBannerScroll);
                 }
+                updateBannerScrollHeight();
             }
             // Insert at position 1: after the stretch at 0, before the pickers.
             m_pickerSidebarLayout->insertWidget(1, m_vpnBannerArea);
@@ -1683,11 +1770,8 @@ void VpnPage::applyWideMode(bool wide)
         m_drawer->setVisible(false);
         m_drawerNotch->setVisible(false);
 
-        // 5. Sidebar is shown only when at least one picker is available.
-        m_pickerSidebar->setVisible(m_drawer->hasAnyVisiblePicker());
-
-        // 6. Centered above the dropdowns or beside them, depending on height.
-        scheduleWideArrangement();
+        // 5. Sidebar is shown only when it has dropdowns or warnings to show.
+        updatePickerSidebarVisibility();
     }
     else
     {
@@ -1787,10 +1871,30 @@ void VpnPage::changeEvent(QEvent* event)
 void VpnPage::resizeEvent(QResizeEvent* event)
 {
     QWidget::resizeEvent(event);
+    updateLayoutForSize();
+}
+
+void VpnPage::setSplitView(const bool split)
+{
+    if (m_splitView == split) return;
+    m_splitView = split;
+    updateLayoutForSize();
+}
+
+void VpnPage::updateLayoutForSize()
+{
+    // The quick settings take their width from the main column. On its own
+    // the page shows them only once the column stays wide enough for wide
+    // mode beside them; beside the Countries list they stay down to a narrow
+    // column, which then uses the narrow layout.
+    const int mainNeeded = m_splitView == true ? SPLIT_MIN_MAIN_WIDTH : kWideThreshold;
+    const bool wanted = AppConfig::instance().showQuickSettings() == true && m_quickSettings->isEmpty() == false;
+    m_quickSettings->setVisible(wanted == true && width() >= mainNeeded + QuickSettingsPanel::PANEL_WIDTH);
     m_globe->setGeometry(rect());
-    applyWideMode(event->size().width() >= kWideThreshold);
+    updateArrangement();
     updateContentScale();
-    scheduleWideArrangement();
+    // Again once the new size and scale are laid out.
+    scheduleArrangement();
     syncInfoBackdrop();
     if (m_wideMode == false && m_drawer != nullptr)
     {
@@ -1800,16 +1904,24 @@ void VpnPage::resizeEvent(QResizeEvent* event)
 
 bool VpnPage::eventFilter(QObject* obj, QEvent* ev)
 {
+    if (m_scrollArea != nullptr && obj == m_scrollArea->viewport())
+    {
+        if (ev->type() == QEvent::Resize)
+        {
+            syncInfoBackdrop();
+        }
+        return QWidget::eventFilter(obj, ev);
+    }
     // Installed on the content and the dropdown sidebar: any change in their
     // height can decide whether the content still fits above the dropdowns.
     if (ev->type() == QEvent::LayoutRequest)
     {
-        scheduleWideArrangement();
+        scheduleArrangement();
     }
     return QWidget::eventFilter(obj, ev);
 }
 
-void VpnPage::scheduleWideArrangement()
+void VpnPage::scheduleArrangement()
 {
     // Deferred so the sizes it measures come from the finished layout pass, and
     // coalesced so a burst of layout requests costs one check.
@@ -1818,35 +1930,21 @@ void VpnPage::scheduleWideArrangement()
     QTimer::singleShot(0, this, [this]()
     {
         m_arrangementPending = false;
-        updateWideArrangement();
+        updateArrangement();
     });
 }
 
-// In wide mode the dropdowns sit at the bottom left. When the page is tall
-// enough for the power button, status and info text to fit above them, the
-// content spans the full page width and is centered on it, like the logo.
-// Otherwise it sits in the column beside the dropdowns, so the two can never
-// overlap.
-void VpnPage::updateWideArrangement()
+// The dropdowns sit at the bottom left, expanded, whenever the page is tall
+// enough for the power button, status and info text to fit above them: the
+// content then spans the main column's full width and is centered on it,
+// like the logo. A page that is not that tall but wide enough keeps the
+// dropdowns expanded in a column beside the content, so the two can never
+// overlap; a narrow one collapses them into the drawer.
+void VpnPage::updateArrangement()
 {
+    const bool centered = stackedArrangementFits();
+    applyWideMode(centered == true || mainWidth() >= kWideThreshold);
     if (m_wideMode == false) return;
-
-    bool centered = true;
-    if (m_pickerSidebar->isHidden() == false)
-    {
-        // Measured at the column width in both arrangements: across the full
-        // width the text wraps onto fewer lines, and judging by that height
-        // could flip the arrangement straight back after switching.
-        const int columnW = width() - kWideSidebarW;
-        const QLayout* scrollLayout = m_scrollArea->widget()->layout();
-        const int scrollH = scrollLayout->hasHeightForWidth()
-            ? scrollLayout->heightForWidth(columnW)
-            : scrollLayout->sizeHint().height();
-        const int contentH = m_topContentWidget->sizeHint().height() + scrollH;
-        const int available = height() - m_logoRow->sizeHint().height()
-                            - m_pickerSidebar->sizeHint().height();
-        centered = contentH + CENTERED_CONTENT_GAP <= available;
-    }
     if (centered == m_wideCentered) return;
     m_wideCentered = centered;
     m_globe->anchorMoved();
@@ -1865,6 +1963,62 @@ void VpnPage::updateWideArrangement()
     }
 }
 
+bool VpnPage::stackedArrangementFits() const
+{
+    // Measured at the column width beside the dropdowns whenever the page is
+    // wide enough for that arrangement too: across the full width the text
+    // wraps onto fewer lines, and judging by that height could flip the
+    // arrangement straight back after switching.
+    const int measureW = mainWidth() >= kWideThreshold ? mainWidth() - kWideSidebarW : mainWidth();
+    const QLayout* scrollLayout = m_scrollArea->widget()->layout();
+    const int scrollH = scrollLayout->hasHeightForWidth()
+        ? scrollLayout->heightForWidth(measureW)
+        : scrollLayout->sizeHint().height();
+    const int contentH = m_topContentWidget->sizeHint().height() + scrollH;
+    const int available = height() - m_logoRow->sizeHint().height() - stackedSidebarHeight();
+    return contentH + CENTERED_CONTENT_GAP <= available;
+}
+
+int VpnPage::stackedSidebarHeight() const
+{
+    if (m_wideMode == true)
+    {
+        return m_pickerSidebar->isHidden() == true ? 0 : m_pickerSidebar->sizeHint().height();
+    }
+
+    // Narrow, the dropdowns are collapsed in the drawer, so their expanded
+    // heights stand in. The warnings, which join them in the sidebar, are
+    // still part of the content's height; at least as tall there as in the
+    // sidebar (which caps them), so this never finds room the stacked
+    // arrangement would not have, and the page cannot flip back and forth.
+    int height = 0;
+    int shown = 0;
+    for (const PickerBase* picker : std::initializer_list<const PickerBase*>{m_locationPicker, m_recentPicker,
+                                                                             m_favoritesPicker})
+    {
+        if (picker == nullptr || picker->isHidden() == true) continue;
+        height += picker->expandedHeight();
+        ++shown;
+    }
+    const bool hasWarnings = m_vpnBannerArea->isHidden() == false;
+    if (shown == 0 && hasWarnings == false) return 0;
+    if (shown > 0)
+    {
+        height += (shown - 1) * SIDEBAR_SPACING;
+    }
+    if (shown > 0 && hasWarnings == true)
+    {
+        height += SIDEBAR_SPACING;
+    }
+    return height + SIDEBAR_B_MARGIN;
+}
+
+void VpnPage::updatePickerSidebarVisibility() const
+{
+    if (m_wideMode == false || m_drawer == nullptr) return;
+    m_pickerSidebar->setVisible(m_drawer->hasAnyVisiblePicker() == true || m_vpnBannerArea->isHidden() == false);
+}
+
 // Scales the logo, power button, status text and the spacing between them with
 // the page, so a large or full-screen window is not a small cluster of controls
 // in a sea of empty space. The fixed sizes are designed for the default window,
@@ -1872,8 +2026,12 @@ void VpnPage::updateWideArrangement()
 // height grew less, so the column keeps its proportions.
 void VpnPage::updateContentScale()
 {
-    const bool sidebarShown = m_wideMode == true && m_pickerSidebar->isHidden() == false;
-    const int columnW = width() - (sidebarShown ? kWideSidebarW : 0);
+    // By the column beside the dropdowns wherever they can sit there, in
+    // either wide arrangement; below that width, by the whole main column in
+    // both the narrow and the stacked layout.
+    const bool sidebarShown = m_wideMode == true && m_pickerSidebar->isHidden() == false
+                           && mainWidth() >= kWideThreshold;
+    const int columnW = mainWidth() - (sidebarShown ? kWideSidebarW : 0);
     const qreal byWidth  = static_cast<qreal>(columnW) / REFERENCE_PAGE_WIDTH;
     const qreal byHeight = static_cast<qreal>(height()) / REFERENCE_PAGE_HEIGHT;
     const qreal clamped  = std::clamp(std::min(byWidth, byHeight), 1.0, MAX_CONTENT_SCALE);
@@ -1946,25 +2104,55 @@ void VpnPage::checkPrereleaseBanner()
         "It may contain bugs or incomplete features. Use with caution.")
         .arg(appVersion.toHtmlEscaped());
 
-    m_prereleaseBanner = new InfoBanner(msg, this);
+    m_prereleaseBanner = addWarning(msg);
     connect(m_prereleaseBanner, &InfoBanner::dismissed, this, [this]()
     {
         m_prereleaseBanner = nullptr;
+    });
+}
+
+InfoBanner* VpnPage::addWarning(const QString& htmlMessage)
+{
+    InfoBanner* warning = new InfoBanner(htmlMessage, this);
+    m_warningBanners.append(warning);
+    connect(warning, &InfoBanner::dismissed, this, [this, warning]()
+    {
+        // Hidden now rather than once this returns, so the warnings' height
+        // below leaves it out.
+        warning->hide();
+        m_warningBanners.removeOne(warning);
         updateBannerAreaVisibility();
     });
-    m_vpnBannerLayout->addWidget(m_prereleaseBanner);
+    m_vpnBannerLayout->addWidget(warning);
     updateBannerAreaVisibility();
+    return warning;
 }
 
 void VpnPage::updateBannerAreaVisibility()
 {
-    const int count = m_prereleaseBanner != nullptr ? 1 : 0;
+    const int count = static_cast<int>(m_warningBanners.size());
     const bool hasAny = count > 0;
     m_vpnBannerArea->setVisible(hasAny);
+    updateBannerScrollHeight();
+    updatePickerSidebarVisibility();
     if (m_warningsHeaderLabel != nullptr)
     {
         m_warningsHeaderLabel->setText(tr("Warnings (%1)").arg(count));
     }
+}
+
+void VpnPage::updateBannerScrollHeight() const
+{
+    if (m_vpnBannerScroll == nullptr) return;
+    // A scroll area only ever asks for the size it already has, so it would
+    // never grow to show a warning added later; it is sized to its warnings
+    // instead, as they wrap in the sidebar, up to its cap.
+    const QLayout* bannerLayout = m_vpnBannerContent->layout();
+    const int bannerW = kWideSidebarW - SIDEBAR_L_MARGIN;
+    const int contentH = bannerLayout->hasHeightForWidth() == true
+        ? bannerLayout->heightForWidth(bannerW)
+        : bannerLayout->sizeHint().height();
+    m_vpnBannerScroll->setFixedHeight(std::min(contentH, BANNER_SCROLL_MAX_HEIGHT_WIDE));
 }
 
 void VpnPage::onCliVersionReady(const QString& version)
@@ -2036,6 +2224,25 @@ void VpnPage::applyGlobeSettings()
 {
     m_globe->setPauseWhenInactive(AppConfig::instance().globePauseWhenUnfocused());
     m_globe->setVisible(MotionPreference::instance().animationEnabled(AppConfig::instance().globeAnimation()));
+}
+
+void VpnPage::showPowerButtonHint()
+{
+    if (AppConfig::instance().powerButtonHintShown() == true || m_powerButtonHint != nullptr) return;
+
+    m_powerButtonHint = new HintBubble(
+        tr("Turn the VPN On or Off"),
+        tr("Click the power button to connect, and click it again to disconnect. "
+           "Its ring is green while you're connected and red while you're not."),
+        m_powerBtn, this);
+    // Beside the button where there is room, so the status below it stays in
+    // view, and clear of the quick settings.
+    m_powerButtonHint->setSides({HintBubble::Side::Right, HintBubble::Side::Below, HintBubble::Side::Above});
+    m_powerButtonHint->setBounds(m_mainColumn);
+    connect(m_powerButtonHint, &HintBubble::dismissed, this, []()
+    {
+        AppConfig::instance().setPowerButtonHintShown(true);
+    });
 }
 
 // Faces the country being connected to, or connected to; spins otherwise.
@@ -2301,7 +2508,8 @@ void VpnPage::stopElapsedTimer() const
 
 void VpnPage::showErrorDetails()
 {
-    ErrorDetailsDialog* dlg = new ErrorDetailsDialog(m_rawError, this);
+    // Over the window, for the same reason as the Change Location dialog.
+    ErrorDetailsDialog* dlg = new ErrorDetailsDialog(m_rawError, window());
     dlg->exec();
 }
 
