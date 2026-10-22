@@ -80,10 +80,12 @@ The Flatpak includes `natpmpc`, so there's nothing to install there. `natpmpc` i
 
 ### Main Page
 
+<img alt="Main page full screen, with the Countries list and quick settings" src="screenshots/main-page_full-screen.png" />
+
 <table>
   <tr>
-    <td><img width="571" alt="Main page narrow" src="https://github.com/user-attachments/assets/ed419e10-124c-4533-b194-16d067cbad0d" /></td>
-    <td><img width="773" alt="Main page normal width" src="https://github.com/user-attachments/assets/8c4e8a0a-213c-4404-955e-9610cb084100" /></td>
+    <td><img width="559" alt="Main page narrow" src="screenshots/main-page_narrow-width.png" /></td>
+    <td><img width="898" alt="Main page normal width" src="screenshots/main-page_normal-width.png" /></td>
   </tr>
 </table>
 
@@ -91,25 +93,25 @@ The Flatpak includes `natpmpc`, so there's nothing to install there. `natpmpc` i
 
 <table>
   <tr>
-    <td><img width="468" alt="Country list narrow" src="https://github.com/user-attachments/assets/f886d61a-b1bb-4185-a5ae-bf8ee40b71ee" /></td>
-    <td><img width="626" alt="Country list wide" src="https://github.com/user-attachments/assets/37fb89c2-821a-449a-9ce5-7d603dfe4088" /></td>
+    <td><img width="562" alt="Country list narrow" src="screenshots/countries-list_narrow-width.png" /></td>
+    <td><img width="626" alt="Country list wide" src="screenshots/countries-list_normal-width.png" /></td>
   </tr>
 </table>
 
 ### Account Page
 
-<img width="626" alt="Account page" src="https://github.com/user-attachments/assets/95860a4e-156b-47f3-adce-41b9c57a7f28" />
+<img width="626" alt="Account page" src="screenshots/account-page.png" />
 
 ### Settings Page
 
 <table>
   <tr>
-    <td><img width="626" alt="Settings: App tab 1" src="https://github.com/user-attachments/assets/1ccab72f-c56b-4b9e-9ac6-b0da97c294e7" /></td>
-    <td><img width="626" alt="Settings: App tab 2" src="https://github.com/user-attachments/assets/acdbf5dc-e951-4fe3-b2fa-a818af4db170" /></td>
+    <td><img width="730" alt="Settings: App tab 1" src="screenshots/settings-page_app-tab-1.png" /></td>
+    <td><img width="730" alt="Settings: App tab 2" src="screenshots/settings-page_app-tab-2.png" /></td>
   </tr>
   <tr>
-    <td><img width="626" alt="Settings: Appearance tab" src="https://github.com/user-attachments/assets/ad0d4d5b-bf2c-4552-a53f-f713bd0ea031" /></td>
-    <td><img width="626" alt="Settings: VPN tab" src="https://github.com/user-attachments/assets/a05708fd-8e4e-4141-ab89-02dbd90a2043" /></td>
+    <td><img width="730" alt="Settings: Appearance tab" src="screenshots/settings-page_appearance-tab.png" /></td>
+    <td><img width="730" alt="Settings: VPN tab" src="screenshots/settings-page_vpn-tab.png" /></td>
   </tr>
 </table>
 
