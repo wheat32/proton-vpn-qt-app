@@ -1,7 +1,7 @@
 {
-    "app_version": "1.13.0",
+    "app_version": "1.13.1",
     "prerelease": false,
     "cli_version_tested_min": "1.0.0",
-    "cli_version_tested_max": "1.0.5"
+    "cli_version_tested_max": "1.1.0"
 }
 
