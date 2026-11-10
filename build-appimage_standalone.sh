@@ -249,6 +249,12 @@ sed -i "s|^Icon=.*|Icon=${APP_ID}|"      "${DESKTOP_DST}"
 cp "${SCRIPT_DIR}/proton-vpn-sign.svg" "${ICON_DIR}/${APP_ID}.svg"
 cp "${DESKTOP_DST}"            "${APPDIR}/${APP_ID}.desktop"
 cp "${ICON_DIR}/${APP_ID}.svg" "${APPDIR}/${APP_ID}.svg"
+# appimagetool creates .DirIcon (the AppImage's file thumbnail) from a PNG named
+# after the desktop file's Icon= in the top level of the AppDir, and will
+# refuse to build without one. The PNG is a 256x256 render of the SVG; after
+# changing the SVG, regenerate it with:
+#   rsvg-convert -w 256 -h 256 proton-vpn-sign.svg -o appimage/io.github.wheat32.ProtonVPNQt.png
+cp "${SCRIPT_DIR}/appimage/${APP_ID}.png" "${APPDIR}/${APP_ID}.png"
 
 # -- Custom AppRun -------------------------------------------------------------
 info "Installing AppRun..."
