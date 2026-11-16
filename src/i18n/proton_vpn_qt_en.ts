@@ -194,198 +194,198 @@
 <context>
     <name>CountriesPage</name>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="417"/>
-        <location filename="../pages/countriesPage.cpp" line="922"/>
+        <location filename="../pages/countriesPage.cpp" line="435"/>
+        <location filename="../pages/countriesPage.cpp" line="940"/>
         <source>Countries</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="422"/>
-        <location filename="../pages/countriesPage.cpp" line="944"/>
-        <location filename="../pages/countriesPage.cpp" line="1032"/>
+        <location filename="../pages/countriesPage.cpp" line="440"/>
+        <location filename="../pages/countriesPage.cpp" line="962"/>
+        <location filename="../pages/countriesPage.cpp" line="1050"/>
         <source>↻ Refresh</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="432"/>
+        <location filename="../pages/countriesPage.cpp" line="450"/>
         <source>Search countries…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="451"/>
+        <location filename="../pages/countriesPage.cpp" line="469"/>
         <source>All</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="452"/>
+        <location filename="../pages/countriesPage.cpp" line="470"/>
         <source>P2P</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="453"/>
+        <location filename="../pages/countriesPage.cpp" line="471"/>
         <source>Secure Core</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="454"/>
+        <location filename="../pages/countriesPage.cpp" line="472"/>
         <source>Tor</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="465"/>
+        <location filename="../pages/countriesPage.cpp" line="483"/>
         <source>The &lt;b&gt;P2P&lt;/b&gt; filter is active because &lt;b&gt;Port Forwarding&lt;/b&gt; is enabled in your settings.&lt;br&gt;&lt;br&gt;Clearing all filters will also remove the P2P filter, which requires disabling Port Forwarding. Would you like to do that?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="488"/>
+        <location filename="../pages/countriesPage.cpp" line="506"/>
         <source>The &lt;b&gt;P2P&lt;/b&gt; filter is active because &lt;b&gt;Port Forwarding&lt;/b&gt; is enabled in your settings.&lt;br&gt;&lt;br&gt;To turn off this filter you need to disable Port Forwarding. Would you like to do that?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="910"/>
-        <location filename="../pages/countriesPage.cpp" line="1773"/>
+        <location filename="../pages/countriesPage.cpp" line="928"/>
+        <location filename="../pages/countriesPage.cpp" line="1797"/>
         <source>%1 Loading cities…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="905"/>
+        <location filename="../pages/countriesPage.cpp" line="923"/>
         <source>%1 Loading countries…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="921"/>
+        <location filename="../pages/countriesPage.cpp" line="939"/>
         <source>Loading…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="781"/>
-        <location filename="../pages/countriesPage.cpp" line="929"/>
-        <location filename="../pages/countriesPage.cpp" line="1116"/>
+        <location filename="../pages/countriesPage.cpp" line="799"/>
+        <location filename="../pages/countriesPage.cpp" line="947"/>
+        <location filename="../pages/countriesPage.cpp" line="1134"/>
         <source>Cities</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1020"/>
+        <location filename="../pages/countriesPage.cpp" line="1038"/>
         <source>Connect to Selected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1091"/>
+        <location filename="../pages/countriesPage.cpp" line="1109"/>
         <source>Countries (%1)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1115"/>
+        <location filename="../pages/countriesPage.cpp" line="1133"/>
         <source>Select a country to view cities.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1130"/>
-        <location filename="../pages/countriesPage.cpp" line="1545"/>
-        <location filename="../pages/countriesPage.cpp" line="1646"/>
+        <location filename="../pages/countriesPage.cpp" line="1148"/>
+        <location filename="../pages/countriesPage.cpp" line="1569"/>
+        <location filename="../pages/countriesPage.cpp" line="1670"/>
         <source>No servers in this country match the selected filters.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1131"/>
+        <location filename="../pages/countriesPage.cpp" line="1149"/>
         <source>Cities (0) – %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1015"/>
+        <location filename="../pages/countriesPage.cpp" line="1033"/>
         <source>Connect to %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="946"/>
+        <location filename="../pages/countriesPage.cpp" line="964"/>
         <source>The countries could not be loaded. Press Refresh to try again.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1013"/>
+        <location filename="../pages/countriesPage.cpp" line="1031"/>
         <source>Choose %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1013"/>
+        <location filename="../pages/countriesPage.cpp" line="1031"/>
         <source>Choose %1, %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1020"/>
+        <location filename="../pages/countriesPage.cpp" line="1038"/>
         <source>Choose a Location</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1129"/>
+        <location filename="../pages/countriesPage.cpp" line="1147"/>
         <source>This country does not match the search.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1224"/>
+        <location filename="../pages/countriesPage.cpp" line="1242"/>
         <source>Disable Port Forwarding?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1240"/>
+        <location filename="../pages/countriesPage.cpp" line="1258"/>
         <source>Go Back</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1243"/>
+        <location filename="../pages/countriesPage.cpp" line="1261"/>
         <source>Disable Port Forwarding</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1294"/>
+        <location filename="../pages/countriesPage.cpp" line="1312"/>
         <source>Country and city selection requires Proton VPN Plus.
 Free accounts are connected to a server chosen by Proton.
 Upgrade your plan to choose any country or city.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1332"/>
+        <location filename="../pages/countriesPage.cpp" line="1350"/>
         <source>Plus Only</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1493"/>
+        <location filename="../pages/countriesPage.cpp" line="1511"/>
         <source>The cities could not be loaded. Select the country again to retry.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1540"/>
+        <location filename="../pages/countriesPage.cpp" line="1564"/>
         <source>Cities (%1) – %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1552"/>
-        <location filename="../pages/countriesPage.cpp" line="1683"/>
+        <location filename="../pages/countriesPage.cpp" line="1576"/>
+        <location filename="../pages/countriesPage.cpp" line="1707"/>
         <source>⚡  Fastest server</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1554"/>
+        <location filename="../pages/countriesPage.cpp" line="1578"/>
         <source>Connects to the fastest server in this country.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1710"/>
+        <location filename="../pages/countriesPage.cpp" line="1734"/>
         <source>Connect</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1710"/>
+        <location filename="../pages/countriesPage.cpp" line="1734"/>
         <source>Choose</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1524"/>
+        <location filename="../pages/countriesPage.cpp" line="1542"/>
         <source>Cities – %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/countriesPage.cpp" line="1015"/>
+        <location filename="../pages/countriesPage.cpp" line="1033"/>
         <source>Connect to %1, %2</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1042,229 +1042,259 @@ Upgrade your plan to choose any country or city.</source>
 <context>
     <name>DebugPage</name>
     <message>
-        <location filename="../pages/debugPage.cpp" line="115"/>
+        <location filename="../pages/debugPage.cpp" line="123"/>
         <source>Debug Tools</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="124"/>
+        <location filename="../pages/debugPage.cpp" line="132"/>
         <source>This page is only available in debug builds. Press F11 to toggle the sidebar button.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="133"/>
+        <location filename="../pages/debugPage.cpp" line="141"/>
         <source>Dialogs</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="135"/>
+        <location filename="../pages/debugPage.cpp" line="143"/>
         <source>Test “What’s New” Dialog</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="146"/>
+        <location filename="../pages/debugPage.cpp" line="154"/>
         <source>Test Error Details Dialog (overflow)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="153"/>
+        <location filename="../pages/debugPage.cpp" line="161"/>
         <source>This is a very long error line intended to trigger horizontal scrollbar / wrapping behavior inside the ErrorDetailsDialog; it just keeps going and going without any newline break whatsoever. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="164"/>
+        <location filename="../pages/debugPage.cpp" line="172"/>
         <source>[line %1] Error: something went wrong in module %1. Details follow here.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="174"/>
+        <location filename="../pages/debugPage.cpp" line="182"/>
         <source>Test “Update Available” Dialog</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="189"/>
+        <location filename="../pages/debugPage.cpp" line="197"/>
         <source>Pages</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="191"/>
+        <location filename="../pages/debugPage.cpp" line="199"/>
         <source>Test “Not Installed” Page</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="195"/>
+        <location filename="../pages/debugPage.cpp" line="203"/>
         <source>Shows the page displayed when the protonvpn CLI cannot be found. Its Check Again button runs the real CLI check.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="201"/>
+        <location filename="../pages/debugPage.cpp" line="209"/>
         <source>Test “CLI Not Responding” Page</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="205"/>
+        <location filename="../pages/debugPage.cpp" line="213"/>
         <source>Shows the page displayed when protonvpn info times out at startup. Its Try Again button runs the real login check.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="215"/>
+        <location filename="../pages/debugPage.cpp" line="222"/>
+        <source>Account</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../pages/debugPage.cpp" line="229"/>
+        <source>Show the app as:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../pages/debugPage.cpp" line="233"/>
+        <source>This account&apos;s plan</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../pages/debugPage.cpp" line="234"/>
+        <source>Free</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../pages/debugPage.cpp" line="235"/>
+        <source>Plus</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../pages/debugPage.cpp" line="237"/>
+        <source>Shows every page as that kind of account sees it. Only the app changes: the CLI still goes by the account&apos;s real plan, so a free account previewing Plus cannot actually use Plus servers or settings.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../pages/debugPage.cpp" line="255"/>
         <source>Home Screen</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="222"/>
+        <location filename="../pages/debugPage.cpp" line="262"/>
         <source>Add Warning</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="226"/>
+        <location filename="../pages/debugPage.cpp" line="266"/>
         <source>Adds a sample warning to the home screen. Each click adds another, short and long in turn.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="231"/>
+        <location filename="../pages/debugPage.cpp" line="271"/>
         <source>&lt;b&gt;Test warning %1&lt;/b&gt; from the Debug page.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="232"/>
+        <location filename="../pages/debugPage.cpp" line="272"/>
         <source>&lt;b&gt;Test warning %1&lt;/b&gt; from the Debug page, long enough to wrap onto several lines so the warnings can be checked with taller content. Dismiss it with its close button or Clear All.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="243"/>
-        <location filename="../pages/debugPage.cpp" line="252"/>
+        <location filename="../pages/debugPage.cpp" line="283"/>
+        <location filename="../pages/debugPage.cpp" line="292"/>
         <source>Show Error</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="247"/>
+        <location filename="../pages/debugPage.cpp" line="287"/>
         <source>Puts the home screen into its error state with a sample CLI error, until hidden again or the connection state next changes.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="252"/>
+        <location filename="../pages/debugPage.cpp" line="292"/>
         <source>Hide Error</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="276"/>
+        <location filename="../pages/debugPage.cpp" line="316"/>
         <source>Sign-in Screens</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="285"/>
+        <location filename="../pages/debugPage.cpp" line="325"/>
         <source>Authenticator Code</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="286"/>
+        <location filename="../pages/debugPage.cpp" line="326"/>
         <source>Code Rejected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="287"/>
+        <location filename="../pages/debugPage.cpp" line="327"/>
         <source>Key: Waiting</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="288"/>
+        <location filename="../pages/debugPage.cpp" line="328"/>
         <source>Key: Touch</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="289"/>
+        <location filename="../pages/debugPage.cpp" line="329"/>
         <source>Key: PIN</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="290"/>
+        <location filename="../pages/debugPage.cpp" line="330"/>
         <source>Key: Wrong PIN</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="291"/>
+        <location filename="../pages/debugPage.cpp" line="331"/>
         <source>Key: Not Detected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="292"/>
+        <location filename="../pages/debugPage.cpp" line="332"/>
         <source>Key: Multiple Keys</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="293"/>
+        <location filename="../pages/debugPage.cpp" line="333"/>
         <source>Key: Signing In</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="295"/>
+        <location filename="../pages/debugPage.cpp" line="335"/>
         <source>Key: Failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="323"/>
+        <location filename="../pages/debugPage.cpp" line="363"/>
         <source>Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="330"/>
+        <location filename="../pages/debugPage.cpp" line="370"/>
         <source>Delete the config file and reset every value to its default.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="336"/>
-        <location filename="../pages/debugPage.cpp" line="343"/>
+        <location filename="../pages/debugPage.cpp" line="376"/>
+        <location filename="../pages/debugPage.cpp" line="383"/>
         <source>Clear All Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="344"/>
+        <location filename="../pages/debugPage.cpp" line="384"/>
         <source>This will delete the config file and reset every setting to its default. The change takes effect immediately in memory.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="383"/>
+        <location filename="../pages/debugPage.cpp" line="423"/>
         <source>Reset</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="386"/>
+        <location filename="../pages/debugPage.cpp" line="426"/>
         <source>Reset to default: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="463"/>
+        <location filename="../pages/debugPage.cpp" line="503"/>
         <source>Migrations</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="466"/>
+        <location filename="../pages/debugPage.cpp" line="506"/>
         <source>Dry-run tests for one-time upgrade migrations. Set the simulated previous version to control which migrations would fire.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="476"/>
+        <location filename="../pages/debugPage.cpp" line="516"/>
         <source>Simulate previous version:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="485"/>
+        <location filename="../pages/debugPage.cpp" line="525"/>
         <source>Run All</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="492"/>
+        <location filename="../pages/debugPage.cpp" line="532"/>
         <source>Migration Test: Run All</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="506"/>
+        <location filename="../pages/debugPage.cpp" line="546"/>
         <source>Run Test</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/debugPage.cpp" line="513"/>
+        <location filename="../pages/debugPage.cpp" line="553"/>
         <source>Migration Test: %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1290,13 +1320,13 @@ Upgrade your plan to choose any country or city.</source>
 <context>
     <name>FavoritesPicker</name>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="921"/>
+        <location filename="../pages/vpnPage.cpp" line="894"/>
         <source>Favorites</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="921"/>
-        <location filename="../pages/vpnPage.cpp" line="933"/>
+        <location filename="../pages/vpnPage.cpp" line="894"/>
+        <location filename="../pages/vpnPage.cpp" line="906"/>
         <source>None yet</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1341,35 +1371,29 @@ Upgrade your plan to choose any country or city.</source>
     </message>
     <message>
         <location filename="../pages/vpnPage.cpp" line="482"/>
-        <location filename="../pages/vpnPage.cpp" line="570"/>
-        <location filename="../pages/vpnPage.cpp" line="690"/>
+        <location filename="../pages/vpnPage.cpp" line="543"/>
+        <location filename="../pages/vpnPage.cpp" line="663"/>
         <source>⚡  Fastest server</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="508"/>
-        <source>Location selection requires Proton VPN Plus.
-Proton will pick a free server for you automatically.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../pages/vpnPage.cpp" line="562"/>
+        <location filename="../pages/vpnPage.cpp" line="535"/>
         <source>Active connection</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="566"/>
+        <location filename="../pages/vpnPage.cpp" line="539"/>
         <source>⚡  Fastest in %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="586"/>
-        <location filename="../pages/vpnPage.cpp" line="591"/>
+        <location filename="../pages/vpnPage.cpp" line="559"/>
+        <location filename="../pages/vpnPage.cpp" line="564"/>
         <source>%1 Loading locations…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="721"/>
+        <location filename="../pages/vpnPage.cpp" line="694"/>
         <source>  Change country…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1559,138 +1583,138 @@ Proton will pick a free server for you automatically.</source>
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../mainWindow.cpp" line="156"/>
+        <location filename="../mainWindow.cpp" line="157"/>
         <source>Starting…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="370"/>
-        <location filename="../mainWindow.cpp" line="667"/>
+        <location filename="../mainWindow.cpp" line="375"/>
+        <location filename="../mainWindow.cpp" line="685"/>
         <source>Debug</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="443"/>
+        <location filename="../mainWindow.cpp" line="448"/>
         <source>Login failed. Please check your credentials.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="468"/>
+        <location filename="../mainWindow.cpp" line="473"/>
         <source>Your session is no longer valid. Please sign in again.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="551"/>
+        <location filename="../mainWindow.cpp" line="556"/>
         <source>Show</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="558"/>
-        <location filename="../mainWindow.cpp" line="1065"/>
-        <location filename="../mainWindow.cpp" line="1071"/>
-        <location filename="../mainWindow.cpp" line="1077"/>
+        <location filename="../mainWindow.cpp" line="563"/>
+        <location filename="../mainWindow.cpp" line="1083"/>
+        <location filename="../mainWindow.cpp" line="1089"/>
+        <location filename="../mainWindow.cpp" line="1095"/>
         <source>Connect</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="571"/>
+        <location filename="../mainWindow.cpp" line="576"/>
         <source>Quit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="620"/>
+        <location filename="../mainWindow.cpp" line="638"/>
         <source>VPN</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="645"/>
+        <location filename="../mainWindow.cpp" line="663"/>
         <source>Countries</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="646"/>
+        <location filename="../mainWindow.cpp" line="664"/>
         <source>Account</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="658"/>
+        <location filename="../mainWindow.cpp" line="676"/>
         <source>Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="1046"/>
-        <location filename="../mainWindow.cpp" line="1109"/>
+        <location filename="../mainWindow.cpp" line="1064"/>
+        <location filename="../mainWindow.cpp" line="1127"/>
         <source>ProtonVPN – Connected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="1047"/>
+        <location filename="../mainWindow.cpp" line="1065"/>
         <source>Disconnect</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="1052"/>
+        <location filename="../mainWindow.cpp" line="1070"/>
         <source>ProtonVPN – Connecting…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="1053"/>
+        <location filename="../mainWindow.cpp" line="1071"/>
         <source>Connecting…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="1058"/>
+        <location filename="../mainWindow.cpp" line="1076"/>
         <source>ProtonVPN – Disconnecting…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="1059"/>
+        <location filename="../mainWindow.cpp" line="1077"/>
         <source>Disconnecting…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="1064"/>
+        <location filename="../mainWindow.cpp" line="1082"/>
         <source>ProtonVPN – Error</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="1070"/>
-        <location filename="../mainWindow.cpp" line="1118"/>
+        <location filename="../mainWindow.cpp" line="1088"/>
+        <location filename="../mainWindow.cpp" line="1136"/>
         <source>ProtonVPN – Disconnected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="1076"/>
+        <location filename="../mainWindow.cpp" line="1094"/>
         <source>ProtonVPN – Checking…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="1099"/>
+        <location filename="../mainWindow.cpp" line="1117"/>
         <source>ProtonVPN – Connecting</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="1100"/>
+        <location filename="../mainWindow.cpp" line="1118"/>
         <source>Establishing a secure VPN connection…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="1104"/>
+        <location filename="../mainWindow.cpp" line="1122"/>
         <source>ProtonVPN – Disconnecting</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="1105"/>
+        <location filename="../mainWindow.cpp" line="1123"/>
         <source>Closing the VPN connection…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="1110"/>
+        <location filename="../mainWindow.cpp" line="1128"/>
         <source>You are now protected by ProtonVPN.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainWindow.cpp" line="1119"/>
+        <location filename="../mainWindow.cpp" line="1137"/>
         <source>The VPN connection has been closed.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1767,7 +1791,7 @@ Proton will pick a free server for you automatically.</source>
 <context>
     <name>PlusDivider</name>
     <message>
-        <location filename="../widgets/plusDivider.h" line="28"/>
+        <location filename="../widgets/plusDivider.h" line="36"/>
         <source>✦  Available to Plus Members</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1872,18 +1896,18 @@ Proton will pick a free server for you automatically.</source>
 <context>
     <name>RecentPicker</name>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="858"/>
+        <location filename="../pages/vpnPage.cpp" line="831"/>
         <source>Recent Connections</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="858"/>
-        <location filename="../pages/vpnPage.cpp" line="888"/>
+        <location filename="../pages/vpnPage.cpp" line="831"/>
+        <location filename="../pages/vpnPage.cpp" line="861"/>
         <source>None yet</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="902"/>
+        <location filename="../pages/vpnPage.cpp" line="875"/>
         <source>MMM d</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2200,631 +2224,664 @@ You can disconnect, apply the change, and reconnect to the same location automat
 <context>
     <name>SettingsPage</name>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="192"/>
+        <location filename="../pages/settingsPage.cpp" line="215"/>
         <source>Reconnect Required</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="194"/>
+        <location filename="../pages/settingsPage.cpp" line="217"/>
         <source>This setting change will only take effect after reconnecting to the VPN.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1574"/>
+        <location filename="../pages/settingsPage.cpp" line="1711"/>
         <source>Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="342"/>
+        <location filename="../pages/settingsPage.cpp" line="407"/>
         <source>App</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="377"/>
-        <location filename="../pages/settingsPage.cpp" line="399"/>
+        <location filename="../pages/settingsPage.cpp" line="442"/>
+        <location filename="../pages/settingsPage.cpp" line="464"/>
         <source>Launch on Startup</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="388"/>
+        <location filename="../pages/settingsPage.cpp" line="453"/>
         <source>Auto-start Error</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="389"/>
+        <location filename="../pages/settingsPage.cpp" line="454"/>
         <source>Failed to %1 auto-start:
 %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="390"/>
+        <location filename="../pages/settingsPage.cpp" line="455"/>
         <source>enable</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="390"/>
+        <location filename="../pages/settingsPage.cpp" line="455"/>
         <source>disable</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="409"/>
-        <location filename="../pages/settingsPage.cpp" line="419"/>
+        <location filename="../pages/settingsPage.cpp" line="474"/>
+        <location filename="../pages/settingsPage.cpp" line="484"/>
         <source>Auto-connect on Startup</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="410"/>
+        <location filename="../pages/settingsPage.cpp" line="475"/>
         <source>Automatically connect to the VPN when the app starts.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="513"/>
-        <location filename="../pages/settingsPage.cpp" line="524"/>
+        <location filename="../pages/settingsPage.cpp" line="578"/>
+        <location filename="../pages/settingsPage.cpp" line="589"/>
         <source>Desktop Notifications</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="514"/>
+        <location filename="../pages/settingsPage.cpp" line="579"/>
         <source>Show a system notification when the VPN is connecting, connected, disconnecting, or disconnected.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="460"/>
-        <location filename="../pages/settingsPage.cpp" line="471"/>
+        <location filename="../pages/settingsPage.cpp" line="525"/>
+        <location filename="../pages/settingsPage.cpp" line="536"/>
         <source>Start Hidden</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="360"/>
+        <location filename="../pages/settingsPage.cpp" line="425"/>
         <source>Startup</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="378"/>
+        <location filename="../pages/settingsPage.cpp" line="443"/>
         <source>Start Proton VPN automatically when you log in.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="430"/>
+        <location filename="../pages/settingsPage.cpp" line="495"/>
         <source>Server</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="431"/>
+        <location filename="../pages/settingsPage.cpp" line="496"/>
         <source>Choose which server to connect to on startup.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="451"/>
+        <location filename="../pages/settingsPage.cpp" line="516"/>
         <source>Auto-connect Server</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="461"/>
+        <location filename="../pages/settingsPage.cpp" line="526"/>
         <source>Launch the app in the background without opening a window. Access it anytime via the system tray icon.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="476"/>
+        <location filename="../pages/settingsPage.cpp" line="541"/>
         <source>Window</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="481"/>
-        <location filename="../pages/settingsPage.cpp" line="503"/>
+        <location filename="../pages/settingsPage.cpp" line="546"/>
+        <location filename="../pages/settingsPage.cpp" line="568"/>
         <source>Close to Tray</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="482"/>
+        <location filename="../pages/settingsPage.cpp" line="547"/>
         <source>Closing the window keeps ProtonVPN running in the system tray. Turn this off to quit the app when the window is closed.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="498"/>
+        <location filename="../pages/settingsPage.cpp" line="563"/>
         <source>Your desktop does not provide a system tray, so closing the window always quits the app.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="508"/>
+        <location filename="../pages/settingsPage.cpp" line="573"/>
         <source>Notifications</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="531"/>
+        <location filename="../pages/settingsPage.cpp" line="596"/>
         <source>Check for Updates on Startup</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="532"/>
+        <location filename="../pages/settingsPage.cpp" line="597"/>
         <source>Automatically check for a newer version of the app each time it starts.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="542"/>
+        <location filename="../pages/settingsPage.cpp" line="607"/>
         <source>Check for Updates</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="560"/>
+        <location filename="../pages/settingsPage.cpp" line="626"/>
         <source>Connection History</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="576"/>
-        <location filename="../pages/settingsPage.cpp" line="589"/>
+        <location filename="../pages/settingsPage.cpp" line="642"/>
+        <location filename="../pages/settingsPage.cpp" line="655"/>
         <source>Recent Connections</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="577"/>
+        <location filename="../pages/settingsPage.cpp" line="643"/>
         <source>Number of recent VPN connections to remember and show on the home screen. Set to 0 to disable.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="605"/>
-        <location filename="../pages/settingsPage.cpp" line="620"/>
+        <location filename="../pages/settingsPage.cpp" line="671"/>
+        <location filename="../pages/settingsPage.cpp" line="686"/>
         <source>Clear Recent Connections</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="606"/>
+        <location filename="../pages/settingsPage.cpp" line="672"/>
         <source>Remove all saved recent connection history.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="607"/>
-        <location filename="../pages/settingsPage.cpp" line="684"/>
+        <location filename="../pages/settingsPage.cpp" line="673"/>
+        <location filename="../pages/settingsPage.cpp" line="750"/>
         <source>Clear</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="615"/>
+        <location filename="../pages/settingsPage.cpp" line="681"/>
         <source>Recent connection history cleared.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="631"/>
+        <location filename="../pages/settingsPage.cpp" line="697"/>
         <source>Favorites</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="648"/>
-        <location filename="../pages/settingsPage.cpp" line="667"/>
+        <location filename="../pages/settingsPage.cpp" line="714"/>
+        <location filename="../pages/settingsPage.cpp" line="733"/>
         <source>Enable Favorites</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="649"/>
+        <location filename="../pages/settingsPage.cpp" line="715"/>
         <source>Allow marking VPN locations as favorites for quick access.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="660"/>
-        <location filename="../pages/settingsPage.cpp" line="980"/>
+        <location filename="../pages/settingsPage.cpp" line="726"/>
+        <location filename="../pages/settingsPage.cpp" line="1097"/>
         <source>Enable the Favorites system to use this setting.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="682"/>
-        <location filename="../pages/settingsPage.cpp" line="697"/>
+        <location filename="../pages/settingsPage.cpp" line="748"/>
+        <location filename="../pages/settingsPage.cpp" line="763"/>
         <source>Clear Favorites</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="683"/>
+        <location filename="../pages/settingsPage.cpp" line="749"/>
         <source>Remove all saved favorite locations.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="692"/>
+        <location filename="../pages/settingsPage.cpp" line="758"/>
         <source>Favorites cleared.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="708"/>
+        <location filename="../pages/settingsPage.cpp" line="838"/>
         <source>Logging</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="713"/>
-        <location filename="../pages/settingsPage.cpp" line="725"/>
+        <location filename="../pages/settingsPage.cpp" line="843"/>
+        <location filename="../pages/settingsPage.cpp" line="855"/>
         <source>Write Logs to File</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="714"/>
+        <location filename="../pages/settingsPage.cpp" line="844"/>
         <source>Save diagnostic logs to disk for troubleshooting. The %1 most recent log files are kept.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="731"/>
-        <location filename="../pages/settingsPage.cpp" line="743"/>
+        <location filename="../pages/settingsPage.cpp" line="861"/>
+        <location filename="../pages/settingsPage.cpp" line="873"/>
         <source>Verbose Logging</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="732"/>
+        <location filename="../pages/settingsPage.cpp" line="862"/>
         <source>Print extra detail to the log, such as every server and node a location&apos;s Properties lists. Launching with &lt;code&gt;--verbose&lt;/code&gt; turns it on for one run.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="748"/>
+        <location filename="../pages/settingsPage.cpp" line="774"/>
         <source>About</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="759"/>
+        <location filename="../pages/settingsPage.cpp" line="785"/>
         <source>About Proton VPN</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="760"/>
+        <location filename="../pages/settingsPage.cpp" line="786"/>
         <source>View app version, licenses, and credits.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="786"/>
+        <location filename="../pages/settingsPage.cpp" line="803"/>
+        <source>Connection Status</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../pages/settingsPage.cpp" line="808"/>
+        <location filename="../pages/settingsPage.cpp" line="832"/>
+        <source>Background Status Checks</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../pages/settingsPage.cpp" line="809"/>
+        <source>How often the app checks in the background that the VPN is still connected. Checking more often notices a dropped connection sooner, but uses more CPU. With &lt;b&gt;Off&lt;/b&gt;, the status shown can be out of date until you open the window. The app always checks when you connect, disconnect, or open its window.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../pages/settingsPage.cpp" line="817"/>
+        <source>Most accurate (15 s)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../pages/settingsPage.cpp" line="818"/>
+        <source>Balanced (30 s)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../pages/settingsPage.cpp" line="819"/>
+        <source>Light (60 s)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../pages/settingsPage.cpp" line="892"/>
         <source>Appearance</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="789"/>
+        <location filename="../pages/settingsPage.cpp" line="895"/>
         <source>General</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="795"/>
-        <location filename="../pages/settingsPage.cpp" line="821"/>
+        <location filename="../pages/settingsPage.cpp" line="901"/>
+        <location filename="../pages/settingsPage.cpp" line="927"/>
         <source>Theme</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="796"/>
+        <location filename="../pages/settingsPage.cpp" line="902"/>
         <source>Choose the color scheme for the app.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="799"/>
+        <location filename="../pages/settingsPage.cpp" line="905"/>
         <source>System Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="800"/>
+        <location filename="../pages/settingsPage.cpp" line="906"/>
         <source>Dark</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="801"/>
+        <location filename="../pages/settingsPage.cpp" line="907"/>
         <source>Light</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="827"/>
+        <location filename="../pages/settingsPage.cpp" line="933"/>
         <source>Globe</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="832"/>
+        <location filename="../pages/settingsPage.cpp" line="938"/>
         <source>Animation</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="849"/>
+        <location filename="../pages/settingsPage.cpp" line="955"/>
         <source>Globe Animation</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="858"/>
+        <location filename="../pages/settingsPage.cpp" line="964"/>
         <source>Pause When Unfocused</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="859"/>
+        <location filename="../pages/settingsPage.cpp" line="965"/>
         <source>Stop the globe from spinning while another window has focus, to save CPU.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="871"/>
+        <location filename="../pages/settingsPage.cpp" line="977"/>
         <source>Pause Globe When Unfocused</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="876"/>
+        <location filename="../pages/settingsPage.cpp" line="982"/>
         <source>Main Page</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="882"/>
-        <location filename="../pages/settingsPage.cpp" line="894"/>
+        <location filename="../pages/settingsPage.cpp" line="988"/>
+        <location filename="../pages/settingsPage.cpp" line="1000"/>
         <source>Show Countries</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="883"/>
+        <location filename="../pages/settingsPage.cpp" line="989"/>
         <source>Show the Countries list beside the main VPN page when the window is wide enough.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="902"/>
-        <location filename="../pages/settingsPage.cpp" line="915"/>
+        <location filename="../pages/settingsPage.cpp" line="1008"/>
+        <location filename="../pages/settingsPage.cpp" line="1021"/>
         <source>Show Quick Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="903"/>
+        <location filename="../pages/settingsPage.cpp" line="1009"/>
         <source>Show quick settings beside the main VPN page when the window is wide enough. Right-click any setting to add it to them or take it out, up to %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="923"/>
+        <location filename="../pages/settingsPage.cpp" line="1029"/>
         <source>Default Quick Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="924"/>
+        <location filename="../pages/settingsPage.cpp" line="1030"/>
         <source>Put back the quick settings the app starts with.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="925"/>
+        <location filename="../pages/settingsPage.cpp" line="1031"/>
         <source>Restore</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="932"/>
+        <location filename="../pages/settingsPage.cpp" line="1038"/>
         <source>Quick settings restored to their defaults.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="939"/>
+        <location filename="../pages/settingsPage.cpp" line="1056"/>
         <source>Main Page Dropdowns</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="945"/>
-        <location filename="../pages/settingsPage.cpp" line="956"/>
+        <location filename="../pages/settingsPage.cpp" line="1062"/>
+        <location filename="../pages/settingsPage.cpp" line="1073"/>
         <source>Show Selected Location</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="946"/>
+        <location filename="../pages/settingsPage.cpp" line="1063"/>
         <source>Display the Selected Location dropdown on the main VPN page.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="964"/>
-        <location filename="../pages/settingsPage.cpp" line="987"/>
+        <location filename="../pages/settingsPage.cpp" line="1081"/>
+        <location filename="../pages/settingsPage.cpp" line="1104"/>
         <source>Show Favorites Dropdown</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="965"/>
+        <location filename="../pages/settingsPage.cpp" line="1082"/>
         <source>Display the Favorites dropdown on the main VPN page.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1006"/>
+        <location filename="../pages/settingsPage.cpp" line="1123"/>
         <source>Show a slowly spinning globe behind the connect button that turns to face the country you connect to. Auto follows your desktop&apos;s reduce-motion setting. Off removes it.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1010"/>
+        <location filename="../pages/settingsPage.cpp" line="1127"/>
         <source>Show a slowly spinning globe behind the connect button that turns to face the country you connect to. Off removes it.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1046"/>
-        <location filename="../pages/settingsPage.cpp" line="1719"/>
+        <location filename="../pages/settingsPage.cpp" line="1165"/>
+        <location filename="../pages/settingsPage.cpp" line="1957"/>
         <source>↻ Refresh</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1056"/>
+        <location filename="../pages/settingsPage.cpp" line="1175"/>
         <source>VPN</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1091"/>
+        <location filename="../pages/settingsPage.cpp" line="1409"/>
         <source>Anonymous Crash Reports</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1092"/>
+        <location filename="../pages/settingsPage.cpp" line="1410"/>
         <source>Send anonymous crash reports to Proton for the VPN CLI tool - not this Qt app.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1094"/>
+        <location filename="../pages/settingsPage.cpp" line="1412"/>
         <source>Crash Reports</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1098"/>
-        <location filename="../pages/settingsPage.cpp" line="1103"/>
+        <location filename="../pages/settingsPage.cpp" line="1210"/>
+        <location filename="../pages/settingsPage.cpp" line="1215"/>
         <source>IPv6</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1099"/>
+        <location filename="../pages/settingsPage.cpp" line="1211"/>
         <source>Enable IPv6 support over the VPN tunnel.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1113"/>
-        <location filename="../pages/settingsPage.cpp" line="1202"/>
-        <location filename="../pages/settingsPage.cpp" line="1223"/>
+        <location filename="../pages/settingsPage.cpp" line="1225"/>
+        <location filename="../pages/settingsPage.cpp" line="1314"/>
+        <location filename="../pages/settingsPage.cpp" line="1335"/>
         <source>Kill Switch</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1114"/>
+        <location filename="../pages/settingsPage.cpp" line="1226"/>
         <source>Block internet access if the VPN connection drops unexpectedly.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1170"/>
+        <location filename="../pages/settingsPage.cpp" line="1282"/>
         <source>Standard</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1171"/>
+        <location filename="../pages/settingsPage.cpp" line="1283"/>
         <source>Automatically disconnect from the internet if the VPN connection is lost.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1181"/>
+        <location filename="../pages/settingsPage.cpp" line="364"/>
+        <location filename="../pages/settingsPage.cpp" line="1293"/>
         <source>Advanced</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1182"/>
+        <location filename="../pages/settingsPage.cpp" line="1294"/>
         <source>Only allow internet access when connected to ProtonVPN. Advanced kill switch will remain active even when you restart your device.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1186"/>
+        <location filename="../pages/settingsPage.cpp" line="1298"/>
         <source>Temporarily removed from the Proton VPN CLI - not currently available.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1251"/>
-        <location filename="../pages/settingsPage.cpp" line="1262"/>
+        <location filename="../pages/settingsPage.cpp" line="1364"/>
+        <location filename="../pages/settingsPage.cpp" line="1375"/>
         <source>NAT Type</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1252"/>
+        <location filename="../pages/settingsPage.cpp" line="1365"/>
         <source>Controls how the VPN server maps your connection. &lt;b&gt;Strict (Type 3)&lt;/b&gt; is the default and best for privacy. &lt;b&gt;Moderate (Type 2)&lt;/b&gt; improves compatibility for online gaming and WebRTC, at a slight privacy trade-off. &lt;a href=&apos;https://protonvpn.com/support/moderate-nat&apos;&gt;Read more&lt;/a&gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1258"/>
+        <location filename="../pages/settingsPage.cpp" line="1371"/>
         <source>Strict (Type 3)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1259"/>
+        <location filename="../pages/settingsPage.cpp" line="1372"/>
         <source>Moderate (Type 2)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1266"/>
-        <location filename="../pages/settingsPage.cpp" line="1269"/>
+        <location filename="../pages/settingsPage.cpp" line="1379"/>
+        <location filename="../pages/settingsPage.cpp" line="1382"/>
         <source>VPN Accelerator</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1267"/>
+        <location filename="../pages/settingsPage.cpp" line="1380"/>
         <source>Boost connection speeds using advanced protocol techniques.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1273"/>
+        <location filename="../pages/settingsPage.cpp" line="1386"/>
         <source>NetShield Ad-blocker</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1274"/>
+        <location filename="../pages/settingsPage.cpp" line="1387"/>
         <source>Block malware, ads, and trackers at the DNS level.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1277"/>
+        <location filename="../pages/settingsPage.cpp" line="820"/>
+        <location filename="../pages/settingsPage.cpp" line="1390"/>
         <source>Off</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1278"/>
+        <location filename="../pages/settingsPage.cpp" line="1391"/>
         <source>Malware only</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1279"/>
+        <location filename="../pages/settingsPage.cpp" line="1392"/>
         <source>Malware, ads &amp; trackers</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1286"/>
+        <location filename="../pages/settingsPage.cpp" line="1399"/>
         <source>NetShield</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1291"/>
-        <location filename="../pages/settingsPage.cpp" line="1315"/>
+        <location filename="../pages/settingsPage.cpp" line="1429"/>
+        <location filename="../pages/settingsPage.cpp" line="1453"/>
         <source>Port Forwarding</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1292"/>
+        <location filename="../pages/settingsPage.cpp" line="1430"/>
         <source>Bypass firewalls to connect to P2P servers and devices in your local network. &lt;a href=&apos;https://protonvpn.com/support/port-forwarding&apos;&gt;Learn more&lt;/a&gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1834"/>
+        <location filename="../pages/settingsPage.cpp" line="2072"/>
         <source>Could not read the autostart template resource.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1853"/>
+        <location filename="../pages/settingsPage.cpp" line="2091"/>
         <source>Could not create the autostart directory.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1860"/>
+        <location filename="../pages/settingsPage.cpp" line="2098"/>
         <source>Could not write the autostart file: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1876"/>
+        <location filename="../pages/settingsPage.cpp" line="2114"/>
         <source>Could not remove the autostart file: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1360"/>
+        <location filename="../pages/settingsPage.cpp" line="1498"/>
         <source>Copy to Clipboard</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1325"/>
+        <location filename="../pages/settingsPage.cpp" line="1463"/>
         <source>Forwarded Port:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1415"/>
-        <location filename="../pages/settingsPage.cpp" line="1438"/>
-        <location filename="../pages/settingsPage.cpp" line="1451"/>
-        <location filename="../pages/settingsPage.cpp" line="1479"/>
+        <location filename="../pages/settingsPage.cpp" line="1553"/>
+        <location filename="../pages/settingsPage.cpp" line="1576"/>
+        <location filename="../pages/settingsPage.cpp" line="1589"/>
+        <location filename="../pages/settingsPage.cpp" line="1617"/>
         <source>Custom DNS</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1416"/>
+        <location filename="../pages/settingsPage.cpp" line="1554"/>
         <source>Override the VPN DNS with your own resolver(s). Separate multiple addresses with a comma.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1433"/>
+        <location filename="../pages/settingsPage.cpp" line="1571"/>
         <source>Apply</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1556"/>
+        <location filename="../pages/settingsPage.cpp" line="1693"/>
         <source>Free plans connect to a server chosen by Proton. Upgrade your plan to choose a server.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1646"/>
+        <location filename="../pages/settingsPage.cpp" line="1796"/>
         <source>%1 Loading settings…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1719"/>
+        <location filename="../pages/settingsPage.cpp" line="1957"/>
         <source>Loading…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/settingsPage.cpp" line="1724"/>
+        <location filename="../pages/settingsPage.cpp" line="1962"/>
         <source>⣋ Loading settings…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3214,157 +3271,157 @@ You can disconnect, apply the change, and reconnect to the same location automat
 <context>
     <name>VpnPage</name>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="1055"/>
+        <location filename="../pages/vpnPage.cpp" line="1028"/>
         <source>Checking…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="1155"/>
+        <location filename="../pages/vpnPage.cpp" line="1128"/>
         <source>View Details</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="1400"/>
+        <location filename="../pages/vpnPage.cpp" line="1373"/>
         <source>Forwarded Port:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="1439"/>
+        <location filename="../pages/vpnPage.cpp" line="1412"/>
         <source>Copy to Clipboard</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="1268"/>
+        <location filename="../pages/vpnPage.cpp" line="1241"/>
         <source>%1 Checking…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="1473"/>
+        <location filename="../pages/vpnPage.cpp" line="1446"/>
         <source>Warnings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="1475"/>
+        <location filename="../pages/vpnPage.cpp" line="1448"/>
         <source>Clear All</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="1632"/>
+        <location filename="../pages/vpnPage.cpp" line="1605"/>
         <source>Fastest server in %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="1655"/>
+        <location filename="../pages/vpnPage.cpp" line="1628"/>
         <source>Fastest server</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="1669"/>
+        <location filename="../pages/vpnPage.cpp" line="1642"/>
         <source>Change Location?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="1681"/>
+        <location filename="../pages/vpnPage.cpp" line="1654"/>
         <source>You selected &lt;b&gt;%1&lt;/b&gt;.&lt;br&gt;Would you like to connect to this location now, or use it on the next reconnect?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="1684"/>
+        <location filename="../pages/vpnPage.cpp" line="1657"/>
         <source>You selected &lt;b&gt;%1&lt;/b&gt;.&lt;br&gt;Would you like to switch the connection to this location now?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="1694"/>
+        <location filename="../pages/vpnPage.cpp" line="1667"/>
         <source>On next reconnect</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="1694"/>
+        <location filename="../pages/vpnPage.cpp" line="1667"/>
         <source>Cancel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="1697"/>
+        <location filename="../pages/vpnPage.cpp" line="1670"/>
         <source>Connect now</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="2226"/>
+        <location filename="../pages/vpnPage.cpp" line="2195"/>
         <source>You are running a &lt;b&gt;pre-release&lt;/b&gt; version of this app (&lt;b&gt;v%1&lt;/b&gt;). It may contain bugs or incomplete features. Use with caution.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="2264"/>
+        <location filename="../pages/vpnPage.cpp" line="2233"/>
         <source>Warnings (%1)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="2305"/>
+        <location filename="../pages/vpnPage.cpp" line="2274"/>
         <source>Your Proton VPN CLI (&lt;b&gt;v%1&lt;/b&gt;) is newer than the tested range (&lt;b&gt;%2&lt;/b&gt;). Things may work fine, but you could encounter unexpected behavior.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="2308"/>
+        <location filename="../pages/vpnPage.cpp" line="2277"/>
         <source>Your Proton VPN CLI (&lt;b&gt;v%1&lt;/b&gt;) is older than the tested range (&lt;b&gt;%2&lt;/b&gt;). Some features may not work correctly. Consider upgrading the CLI.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="2347"/>
+        <location filename="../pages/vpnPage.cpp" line="2316"/>
         <source>Turn the VPN On or Off</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="2348"/>
+        <location filename="../pages/vpnPage.cpp" line="2317"/>
         <source>Click the power button to connect, and click it again to disconnect. Its ring is green while you&apos;re connected and red while you&apos;re not.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="2552"/>
+        <location filename="../pages/vpnPage.cpp" line="2521"/>
         <source>An error occurred in the Proton VPN CLI.&lt;br&gt;Please file a bug report at &lt;a href=&apos;https://github.com/ProtonVPN/proton-vpn-cli/issues&apos;&gt;github.com/ProtonVPN/proton-vpn-cli/&lt;/a&gt;.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="2568"/>
+        <location filename="../pages/vpnPage.cpp" line="2537"/>
         <source>The Proton VPN CLI reported an error without saying what went wrong.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="2421"/>
+        <location filename="../pages/vpnPage.cpp" line="2390"/>
         <source>Connected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="2485"/>
+        <location filename="../pages/vpnPage.cpp" line="2454"/>
         <source>Disconnected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="2499"/>
+        <location filename="../pages/vpnPage.cpp" line="2468"/>
         <source>Connecting…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="2521"/>
+        <location filename="../pages/vpnPage.cpp" line="2490"/>
         <source>Disconnecting…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="2531"/>
+        <location filename="../pages/vpnPage.cpp" line="2500"/>
         <source>Error</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="2556"/>
+        <location filename="../pages/vpnPage.cpp" line="2525"/>
         <source>&lt;span style=&apos;color:#f5a623;&apos;&gt;&amp;#9888;&lt;/span&gt; CLI errors can sometimes be resolved by &lt;a href=&apos;action://signout&apos; style=&apos;color:#ab8fff;&apos;&gt;signing out and signing back in&lt;/a&gt;.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="2662"/>
+        <location filename="../pages/vpnPage.cpp" line="2632"/>
         <source>Port forwarding is active on this server.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../pages/vpnPage.cpp" line="2711"/>
+        <location filename="../pages/vpnPage.cpp" line="2681"/>
         <source>&lt;b&gt;natpmpc is not installed.&lt;/b&gt; The forwarded port cannot be displayed or kept alive automatically. Install it to use port forwarding.</source>
         <translation type="unfinished"></translation>
     </message>

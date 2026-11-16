@@ -137,6 +137,29 @@ private slots:
     {
         QVERIFY(CliSettings::normalizeDnsList(QStringLiteral(" , ")).isEmpty());
     }
+
+    //  offersPlusUpgrade
+
+    void offersPlusUpgrade_freeAccountOutput_isTrue()
+    {
+        const QString output = QStringLiteral(
+            "Setting                  Value\n"
+            "-----------------------  ------------\n"
+            "netshield                off\n"
+            "\n"
+            "To upgrade to VPN Plus, visit https://account.protonvpn.com\n");
+        QVERIFY(CliSettings::offersPlusUpgrade(output));
+    }
+
+    void offersPlusUpgrade_plusAccountOrNoOutput_isFalse()
+    {
+        const QString output = QStringLiteral(
+            "Setting                  Value\n"
+            "-----------------------  ------------\n"
+            "netshield                malware-only\n");
+        QCOMPARE(CliSettings::offersPlusUpgrade(output), false);
+        QCOMPARE(CliSettings::offersPlusUpgrade(QString()), false);
+    }
 };
 
 QTEST_MAIN(TstCliSettings)

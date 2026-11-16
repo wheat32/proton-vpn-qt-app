@@ -6,6 +6,7 @@
 #include "../dialogs/updateAvailableDialog.h"
 #include "../dialogs/whatsNewDialog.h"
 #include "../migrations.h"
+#include "../widgets/styledComboBox.h"
 
 #include <QFrame>
 #include <QGridLayout>
@@ -46,6 +47,13 @@ constexpr int ERROR_BODY_LINES          = 38;
 constexpr int ERROR_LONG_LINES          = 2;
 // Shown where the app's version cannot be read from version.json.
 const QString UNKNOWN_VERSION = QStringLiteral("?.?.?");
+
+// The Account section's choices, in the order its dropdown lists them.
+constexpr AccountType ACCOUNT_PREVIEW_CHOICES[] = {
+    AccountType::Unknown, // the account's own plan
+    AccountType::Free,
+    AccountType::Plus,
+};
 
 // The app's version for the dialog tests.
 QString appVersionOrPlaceholder()
@@ -206,6 +214,38 @@ DebugPage::DebugPage(QWidget* parent)
            "Its Try Again button runs the real login check."));
     connect(cliNotRespondingBtn, &QPushButton::clicked, this, &DebugPage::cliNotRespondingPageRequested);
     layout->addWidget(cliNotRespondingBtn, 0, Qt::AlignLeft);
+
+    layout->addWidget(makeDivider(content));
+
+    //  Account section
+    // The UI as a free or a Plus account sees it, without needing one of each.
+    layout->addWidget(makeSectionHeader(tr("Account"), content));
+    {
+        QWidget* row = new QWidget(content);
+        QHBoxLayout* rowLayout = new QHBoxLayout(row);
+        rowLayout->setContentsMargins(0, 0, 0, 0);
+        rowLayout->setSpacing(GRID_H_SPACING);
+
+        rowLayout->addWidget(new QLabel(tr("Show the app as:"), row));
+
+        StyledComboBox* planCombo = new StyledComboBox(row);
+        // In the order of ACCOUNT_PREVIEW_CHOICES.
+        planCombo->addItem(tr("This account's plan"));
+        planCombo->addItem(tr("Free"));
+        planCombo->addItem(tr("Plus"));
+        planCombo->setToolTip(
+            tr("Shows every page as that kind of account sees it. Only the app changes: "
+               "the CLI still goes by the account's real plan, so a free account previewing "
+               "Plus cannot actually use Plus servers or settings."));
+        connect(planCombo, &QComboBox::currentIndexChanged, this, [this](const int index)
+        {
+            if (index < 0 || index >= static_cast<int>(std::size(ACCOUNT_PREVIEW_CHOICES))) return;
+            emit accountTypePreviewRequested(ACCOUNT_PREVIEW_CHOICES[index]);
+        });
+        rowLayout->addWidget(planCombo);
+
+        layout->addWidget(row, 0, Qt::AlignLeft);
+    }
 
     layout->addWidget(makeDivider(content));
 

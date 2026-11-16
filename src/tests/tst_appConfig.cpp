@@ -149,6 +149,42 @@ private slots:
         AppConfig::instance().setGlobePauseWhenUnfocused(false);
     }
 
+    //  Background status checks
+
+    void defaults_statusCheckIsBalanced()
+    {
+        QVERIFY(AppConfig::instance().statusCheck() == AppConfig::StatusCheck::Balanced);
+    }
+
+    void setStatusCheck_storesValue()
+    {
+        AppConfig::instance().setStatusCheck(AppConfig::StatusCheck::Off);
+        QVERIFY(AppConfig::instance().statusCheck() == AppConfig::StatusCheck::Off);
+        // restore
+        AppConfig::instance().setStatusCheck(AppConfig::StatusCheck::Balanced);
+    }
+
+    void statusCheckFromName_roundTripsAndDefaultsToBalanced()
+    {
+        for (const AppConfig::StatusCheck value : {AppConfig::StatusCheck::Frequent,
+                                                   AppConfig::StatusCheck::Balanced,
+                                                   AppConfig::StatusCheck::Relaxed,
+                                                   AppConfig::StatusCheck::Off})
+        {
+            QVERIFY(AppConfig::statusCheckFromName(AppConfig::statusCheckName(value)) == value);
+        }
+        QVERIFY(AppConfig::statusCheckFromName(QStringLiteral("hourly")) == AppConfig::StatusCheck::Balanced);
+        QVERIFY(AppConfig::statusCheckFromName(QString()) == AppConfig::StatusCheck::Balanced);
+    }
+
+    void statusCheckSeconds_eachValue_givesItsInterval()
+    {
+        QCOMPARE(AppConfig::statusCheckSeconds(AppConfig::StatusCheck::Frequent), 15);
+        QCOMPARE(AppConfig::statusCheckSeconds(AppConfig::StatusCheck::Balanced), 30);
+        QCOMPARE(AppConfig::statusCheckSeconds(AppConfig::StatusCheck::Relaxed), 60);
+        QCOMPARE(AppConfig::statusCheckSeconds(AppConfig::StatusCheck::Off), AppConfig::STATUS_CHECK_NEVER);
+    }
+
     void globeAnimationName_eachValue_isDistinct()
     {
         QCOMPARE(AppConfig::globeAnimationName(AppConfig::GlobeAnimation::Auto), QStringLiteral("auto"));

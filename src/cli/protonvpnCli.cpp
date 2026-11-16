@@ -292,7 +292,6 @@ void VpnManager::checkLoginStatus(int retriesLeft)
             {
                 m_signedIn = true;
                 startStatusMonitor();
-                fetchAccountType();
                 fetchSettings();
                 emit loginStatusResult(true, accountVal);
             }
@@ -533,7 +532,6 @@ void VpnManager::finishSignin(const bool ok, const QString& error)
     {
         m_signedIn = true;
         startStatusMonitor();
-        fetchAccountType();
         fetchSettings();
     }
     emit loginFinished(ok, error);
@@ -972,26 +970,6 @@ void VpnManager::fetchInfo()
     });
 }
 
-void VpnManager::fetchAccountType()
-{
-    runCommand({QStringLiteral("config"), QStringLiteral("list")},
-               [this](int exitCode, const QString& out, const QString& err)
-    {
-        // Nothing to classify when the CLI failed (it could not be started,
-        // the session is gone, the keyring is locked): keep the current
-        // account type rather than falling through to the Plus default below.
-        if (exitCode != 0) return;
-
-        const QString combined = out + QLatin1Char('\n') + err;
-        const AccountType type =
-            combined.contains(QStringLiteral("To upgrade to VPN Plus"), Qt::CaseInsensitive)
-            ? AccountType::Free
-            : AccountType::Plus;
-        m_accountType = type;
-        emit accountTypeReady(type);
-    });
-}
-
 void VpnManager::fetchCliVersion()
 {
     // "protonvpn" in the terminal with no args prints the ASCII banner; the version number
@@ -1036,10 +1014,21 @@ void VpnManager::applyConfigValue(const QString& key, const QString& value)
 void VpnManager::fetchSettings()
 {
     runCommand({QStringLiteral("config"), QStringLiteral("list")},
-               [this](const int exitCode, const QString& out, const QString&)
+               [this](const int exitCode, const QString& out, const QString& err)
     {
         QMap<QString, QString> settings = CliSettings::parseConfigList(out);
-        if (exitCode != 0 || settings.isEmpty() == true)
+        const bool answered = exitCode == 0 && settings.isEmpty() == false;
+        if (answered == true)
+        {
+            // The same output tells the plan, so no second `config list` is
+            // run for it. A CLI that failed says nothing about the plan, and
+            // the account type stays what it was.
+            m_accountType = CliSettings::offersPlusUpgrade(out + QLatin1Char('\n') + err) == true
+                            ? AccountType::Free
+                            : AccountType::Plus;
+            emit accountTypeReady(accountType());
+        }
+        if (answered == false)
         {
             // The CLI could not answer (not signed in, or it failed): the file
             // at least has every setting the user has changed.

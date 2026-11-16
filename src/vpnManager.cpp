@@ -32,6 +32,7 @@ constexpr int NETSHIELD_MODE_FULL         = 2;
 
 VpnManager::VpnManager(QObject* parent)
     : QObject(parent),
+      m_statusPollSeconds(StatusMonitor::DEFAULT_POLL_SECONDS),
       // A first answer for portForwardingEnabled() before the CLI is asked.
       m_settings(readSettingsFile())
 {
@@ -153,13 +154,20 @@ QMap<QString, QString> VpnManager::readSettingsFile()
     return settings;
 }
 
+void VpnManager::previewAccountType(const AccountType type)
+{
+    if (m_accountTypePreview == type) return;
+    m_accountTypePreview = type;
+    emit accountTypeReady(accountType());
+}
+
 bool VpnManager::portForwardingEnabled() const
 {
     return isOnString(m_settings.value(QStringLiteral("port-forwarding")));
 }
 
 // ---------------------------------------------------------------------------
-// Background status monitor (long-lived subprocess, every 15 s while logged in)
+// Background status monitor (long-lived subprocess while logged in)
 // ---------------------------------------------------------------------------
 
 void VpnManager::startStatusMonitor()
@@ -167,6 +175,7 @@ void VpnManager::startStatusMonitor()
     if (m_statusMonitor != nullptr) return;
 
     m_statusMonitor = new StatusMonitor(this);
+    m_statusMonitor->setPollInterval(m_statusPollSeconds);
     connect(m_statusMonitor, &StatusMonitor::statusParsed,
             this, [this](const QMap<QString, QString>& fields)
             {
@@ -301,6 +310,20 @@ void VpnManager::announceState(const VpnState state, const QString& info)
         m_connectedServer.clear();
     }
     emit connectionStateChanged(m_state, info);
+}
+
+void VpnManager::setStatusPollInterval(const int seconds)
+{
+    m_statusPollSeconds = seconds;
+    if (m_statusMonitor != nullptr)
+    {
+        m_statusMonitor->setPollInterval(seconds);
+    }
+}
+
+void VpnManager::refreshStatus()
+{
+    refreshStatusNow();
 }
 
 void VpnManager::refreshStatusNow()

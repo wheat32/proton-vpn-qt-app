@@ -659,6 +659,33 @@ QTabBar::tab:hover:!selected {
     border-top-right-radius: 6px;
 }
 
+/*  Settings page, wide layout: the section list beside the settings, and a
+    pane with all four corners round now that no tab bar meets it  */
+QPushButton#settingsNavButton {
+    background-color: transparent;
+    color: #9999bb;
+    border: none;
+    border-left: 2px solid transparent;
+    border-radius: 0px;
+    padding: 8px 14px;
+    text-align: left;
+}
+QPushButton#settingsNavButton:hover:!checked {
+    background-color: #1c1c34;
+    color: #eaeaea;
+}
+QPushButton#settingsNavButton:checked {
+    background-color: #1a1a2e;
+    color: #eaeaea;
+    font-weight: bold;
+    border-left: 2px solid #6d4aff;
+}
+QTabWidget#settingsTabs[wide="true"]::pane {
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    top: 0px;
+}
+
 /*  Menus (the tray menu, and the Settings page's right-click menu): drawn
     here like the combo box dropdowns below, so they look the same under
     every Qt style, with an outlined box for the checkable items. Square
@@ -796,10 +823,6 @@ QLabel#infoKey[disabled="true"]      { color: #555555; }
 QLabel#locationPickerItemLabel[fastest="true"] { color: #ab8fff; }
 QLabel#cityLabel[fastest="true"] { color: #ab8fff; background-color: transparent; }
 QLabel#locationPickerItemLabel[action="true"] { color: #888888; }
-
-/*  Location picker dimmed for free accounts (no location choice)  */
-QLabel#locationPickerTop[dimmed="true"],
-QLabel#locationPickerBottom[dimmed="true"] { color: #666677; }
 
 /*  Account plan value  */
 QLabel#infoValue[plan="free"] { color: #aaaaaa; font-weight: normal; }

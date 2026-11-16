@@ -63,7 +63,8 @@ public:
     const QMap<QString, QList<QPair<QString, QString>>>& cities() const { return m_cities; } // code -> (city, features)
     void fetchInfo();
     // Asks the CLI for the settings it is using (`protonvpn config list`) and
-    // emits settingsReady(). Also runs on its own at sign-in and after every
+    // emits settingsReady(), and accountTypeReady() with the plan the same
+    // output shows. Also runs on its own at sign-in and after every
     // applyConfigValue(), so listeners stay in step with the CLI.
     void fetchSettings();
     void applyConfig(const QString& key, bool enabled);
@@ -74,10 +75,22 @@ public:
     void fetchCityFeatures(const QString& countryCode, const QString& city,
                            const std::function<void(const QString& features)>& callback);
     void fetchCliVersion();
-    void fetchAccountType();
+    // Seconds between background `protonvpn status` checks;
+    // StatusMonitor::NO_PERIODIC_POLL for none. Applies at once.
+    void setStatusPollInterval(int seconds);
+    // Asks the CLI for the status now, outside the regular checks.
+    void refreshStatus();
 
     VpnState    currentState()       const { return m_state; }
-    AccountType accountType()        const { return m_accountType; }
+    // The plan the UI goes by: the account's own, unless a preview replaces it.
+    AccountType accountType() const
+    {
+        return m_accountTypePreview != AccountType::Unknown ? m_accountTypePreview : m_accountType;
+    }
+    // Shows the UI as it is for `type` whatever plan the account has, or by
+    // the account's own plan again with AccountType::Unknown. Only the UI
+    // changes: the CLI still goes by the real plan. For the Debug page.
+    void previewAccountType(AccountType type);
     // Last country / city passed to connectVpn() - empty if connected via CLI.
     // After a reconnect to a server by name, the country is that server's.
     QString     lastConnectCountry() const { return m_lastConnectCountry; }
@@ -134,7 +147,8 @@ private:
     // happened since. Gates sessionExpired(): a command that fails with "please
     // sign in" while nobody is signed in is expected, not an expired session.
     bool        m_signedIn      = false;
-    AccountType m_accountType   = AccountType::Unknown;
+    AccountType m_accountType   = AccountType::Unknown;        // the account's own plan
+    AccountType m_accountTypePreview = AccountType::Unknown;   // see previewAccountType()
     QString     m_connectedServer;       // last server string seen while Connected
     QString     m_lastConnectCountry;    // country arg last passed to connectVpn()
     QString     m_lastConnectCity;       // city    arg last passed to connectVpn()
@@ -145,6 +159,7 @@ private:
     std::unique_ptr<SigninFlow> m_signinFlow; // the conversation with the running `protonvpn signin`
     int             m_signinAttempt  = 0;     // bumped when a sign-in ends, so late replies are ignored
     StatusMonitor*  m_statusMonitor  = nullptr;
+    int             m_statusPollSeconds; // see setStatusPollInterval(); set in the constructor
     QMap<QString, QString> m_settings;   // see settings()
     int             m_configSetsInFlight = 0; // `config set` commands not yet finished
     ConnectQueue    m_connectQueue;           // one connect or disconnect at a time, newest request wins
@@ -206,7 +221,7 @@ private:
     // longer the newest is dropped.
     void issueConnect(const ConnectRequest& request, int retriesLeft, int ticket);
 
-    // Background status monitor (long-lived subprocess, every 15 s while logged in).
+    // Background status monitor (long-lived subprocess while logged in).
     void startStatusMonitor();
     void stopStatusMonitor();
 

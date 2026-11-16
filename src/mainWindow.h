@@ -7,6 +7,7 @@
 #include <QKeyEvent>
 #include <QPointer>
 #include <QResizeEvent>
+#include <QShowEvent>
 #include <QTimer>
 #include <QStackedWidget>
 #include <QToolButton>
@@ -126,6 +127,9 @@ private:
     void closeEvent(QCloseEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
+    void showEvent(QShowEvent* event) override;
+    // Hands AppConfig's background status check frequency to the manager.
+    void applyStatusCheckSetting() const;
     void maybeShowWhatsNew();
     // Shows the VPN page's first-launch tip on the power button once the page
     // is up and the What's New dialog, which a first launch also opens, is

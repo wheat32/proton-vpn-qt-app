@@ -1,6 +1,6 @@
 // statusMonitor.cpp
 // StatusMonitor: long-lived subprocess that runs `protonvpn status` in a
-// 15-second loop.  See statusMonitor.h for the full description.
+// loop.  See statusMonitor.h for the full description.
 
 #include "statusMonitor.h"
 #include "cliNoiseFilter.h"
@@ -22,9 +22,6 @@ namespace
 // visible in /proc/PID/cmdline and `ps aux`.
 constexpr char PROCESS_NAME[] = "protonvpn-qt-status-mon"; // NOLINT(*-avoid-c-arrays)
 
-// Seconds between two `protonvpn status` runs.
-constexpr int POLL_INTERVAL_S = 15;
-
 // How long to wait before restarting the monitor after an unexpected exit.
 constexpr int RESTART_DELAY_MS = 5'000;
 
@@ -45,30 +42,8 @@ constexpr const char* NO_CONNECTION_PHRASES[] = {
     "no connection",
 };
 
-// Shell command run by the subprocess:
-//   1. exec -a renames the bash process to PROCESS_NAME (sets argv[0]).
-//   2. The inner bash runs an infinite loop:
-//        a. `protonvpn status` (stdout + stderr merged) - or via flatpak-spawn
-//           when running inside a Flatpak sandbox.
-//        b. ASCII 0x1E (Record Separator) - unambiguous snapshot delimiter
-//        c. sleep 15
-QString buildLoopCommand()
-{
-    // Inside a Flatpak sandbox, `protonvpn` is not available directly - it
-    // must be forwarded to the host via flatpak-spawn.
-    const QString vpnCmd = isRunningAsFlatpak()
-        ? QStringLiteral("flatpak-spawn --host protonvpn status")
-        : QStringLiteral("protonvpn status");
-
-    return QStringLiteral("exec -a %1 /bin/bash -c "
-                          "'while true; "
-                          "do %2 2>&1; "
-                          "printf \"\\x1e\"; "
-                          "sleep %3; "
-                          "done'")
-        .arg(QString::fromLatin1(PROCESS_NAME), vpnCmd)
-        .arg(POLL_INTERVAL_S);
-}
+// What the loop sleeps for when it does not poll periodically.
+const QString SLEEP_FOREVER = QStringLiteral("infinity");
 
 // Between the server name and its location in a `protonvpn status` server
 // string: "US-NJ#203 in Secaucus, United States".
@@ -108,6 +83,31 @@ StatusMonitor::~StatusMonitor()
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+void StatusMonitor::setPollInterval(const int seconds)
+{
+    const int interval = seconds > 0 ? seconds : NO_PERIODIC_POLL;
+    if (m_pollSeconds == interval) return;
+    m_pollSeconds = interval;
+    restart(); // no-op unless running
+}
+
+// static
+// The shell command run by the subprocess:
+//   1. exec -a renames the bash process to PROCESS_NAME (sets argv[0]).
+//   2. The inner bash loops: the status command (stdout + stderr merged),
+//      ASCII 0x1E (Record Separator) as the snapshot delimiter, then the sleep.
+QString StatusMonitor::loopCommand(const QString& statusCommand, const int intervalSeconds)
+{
+    const QString sleepFor = intervalSeconds > 0 ? QString::number(intervalSeconds) : SLEEP_FOREVER;
+    return QStringLiteral("exec -a %1 /bin/bash -c "
+                          "'while true; "
+                          "do %2 2>&1; "
+                          "printf \"\\x1e\"; "
+                          "sleep %3; "
+                          "done'")
+        .arg(QString::fromLatin1(PROCESS_NAME), statusCommand, sleepFor);
+}
 
 void StatusMonitor::start()
 {
@@ -188,9 +188,14 @@ void StatusMonitor::launchProcess()
             &QProcess::finished,
             this, &StatusMonitor::onProcessFinished);
 
-    const QString loopCommand = buildLoopCommand();
+    // Inside a Flatpak sandbox, `protonvpn` is not available directly - it
+    // must be forwarded to the host via flatpak-spawn.
+    const QString statusCommand = isRunningAsFlatpak()
+        ? QStringLiteral("flatpak-spawn --host protonvpn status")
+        : QStringLiteral("protonvpn status");
+    const QString command = loopCommand(statusCommand, m_pollSeconds);
     m_process->start(QStringLiteral("/bin/bash"),
-                     {QStringLiteral("-c"), loopCommand});
+                     {QStringLiteral("-c"), command});
 
     if (m_process->waitForStarted(PROCESS_START_TIMEOUT_MS))
     {
@@ -200,7 +205,7 @@ void StatusMonitor::launchProcess()
                     .arg(QString::fromLatin1(PROCESS_NAME))
                     .arg(m_process->processId())
                     .arg(m_restartCount)
-                    .arg(loopCommand));
+                    .arg(command));
     }
     else
     {

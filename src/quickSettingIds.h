@@ -23,6 +23,7 @@ inline const QString ENABLE_FAVORITES         = QStringLiteral("enable-favorites
 inline const QString CLEAR_FAVORITES          = QStringLiteral("clear-favorites");
 inline const QString LOG_TO_FILE              = QStringLiteral("log-to-file");
 inline const QString VERBOSE_LOGGING          = QStringLiteral("verbose-logging");
+inline const QString STATUS_CHECK             = QStringLiteral("status-check");
 
 // Appearance tab
 inline const QString THEME                    = QStringLiteral("theme");

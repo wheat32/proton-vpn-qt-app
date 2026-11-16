@@ -13,7 +13,7 @@ A Qt GUI front-end for the [Proton VPN Linux CLI](https://protonvpn.com/support/
 ### General
 - One-click **connect / disconnect** with a large power button and system tray controls
 - Detects an existing connection on launch using `protonvpn status` and shows the server you're connected to, plus your new IP address after connecting from the app
-- **Background polling** every 15 seconds: detects external state changes (CLI disconnect, reconnect, or location switch) and updates the UI without any user action
+- **Background polling** (every 30 seconds by default, adjustable or off under Settings > App > Advanced): detects external state changes (CLI disconnect, reconnect, or location switch) and updates the UI without any user action
 - Sign in with your password plus an **authenticator code or a security key** (U2F/FIDO2)
 - **Animated globe** behind the power button that turns to face the country you connect to
 - **Split view** for wide windows: from 1200 px wide, the countries appear beside the main page (up to a third of its width) as a grid of flag cards above the selected country's servers; the Countries button still opens the full-size page

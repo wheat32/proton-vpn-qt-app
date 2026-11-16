@@ -87,8 +87,6 @@ public:
     // Returns true if found; false if not found (falls back to "Active connection").
     bool trySelectCity(const QString& city);
     void setUnknownConnection(bool unknown);
-    // Disables interaction for free-plan users (no popup, forbidden cursor, tooltip).
-    void setFreeMode(bool free);
 
     [[nodiscard]] QString selectedCity() const { return m_selectedCity; }
 
@@ -113,7 +111,6 @@ private:
     QString m_countryName;
     QString m_selectedCity;
     bool    m_unknownConnection = false;
-    bool    m_freeMode = false;
 
     QLabel*  m_flagLabel;
     QTimer*  m_loadingTimer = nullptr;
@@ -310,6 +307,7 @@ private:
     // content, and the width of the sidebar they sit in.
     static constexpr int WIDE_THRESHOLD     = 700;
     static constexpr int WIDE_SIDEBAR_WIDTH = 300;
+    bool            m_showLocationPicker    = true; // cached from AppConfig
     bool            m_showFavoritesDropdown = true; // cached from AppConfig
     bool            m_favoritesEnabled      = true; // cached from AppConfig
     // Container that holds the warning banners added with addWarning() (the
@@ -398,6 +396,8 @@ private:
     GlobeWidget* m_globe = nullptr;
     void updateGlobeTarget();
     void syncInfoBackdrop() const;
+    // What the info label's width was last worked out from (see syncInfoBackdrop()).
+    mutable QString m_infoBackdropState;
     // Chooses between the narrow layout and the two wide arrangements: the
     // content spanning the full width above the expanded dropdowns, or
     // sitting in a column beside them.
@@ -411,7 +411,6 @@ private:
     // In wide mode the sidebar holds the dropdowns and the warnings, and
     // shows when either has anything to show.
     void updatePickerSidebarVisibility() const;
-    void applyFreeUserMode() const;
     void startNatPmpLoop();
     void stopNatPmpLoop();
     // Stops the keep-alive and hides the forwarded port, and nothing more:

@@ -14,6 +14,7 @@
 #include <QEvent>
 #include <QMouseEvent>
 #include <QGuiApplication>
+#include <QHash>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPainter>
@@ -177,6 +178,23 @@ constexpr int PF_DIALOG_BUTTON_SPACING = 8;
 constexpr int PF_DIALOG_BUTTON_COUNT   = 2;
 constexpr int PF_DIALOG_MIN_WIDTH      = 420;
 
+// A country's flag at a size, drawn from its SVG once and kept. The list is
+// rebuilt on every keystroke of a search, and a flag never changes.
+QPixmap countryFlag(const QString& countryCode, const int width, const int height)
+{
+    static QHash<QString, QPixmap> cache;
+    const QString key = QStringLiteral("%1 %2x%3 @%4")
+        .arg(countryCode.toLower()).arg(width).arg(height).arg(qGuiApp->devicePixelRatio());
+    const auto cached = cache.constFind(key);
+    if (cached != cache.constEnd())
+    {
+        return cached.value();
+    }
+    const QPixmap flag = GeoUtils::svgPixmap(QStringLiteral(":/flags/") + countryCode.toLower(), width, height);
+    cache.insert(key, flag);
+    return flag;
+}
+
 // Takes everything out of a layout, deleting its widgets. They are hidden
 // first: they stay around until the event loop deletes them, and would
 // otherwise show through what is put in their place until then.
@@ -229,8 +247,8 @@ QIcon makeCountryListIcon(const QString& countryCode, const bool pinned)
         drawPinnedStar(p, QRect(0, 0, COUNTRY_STAR_W, COUNTRY_ICON_H));
     }
 
-    const QPixmap flag = GeoUtils::svgPixmap(
-        QStringLiteral(":/flags/") + countryCode.toLower(), COUNTRY_FLAG_W, COUNTRY_FLAG_H);
+    const QPixmap flag = countryFlag(
+        countryCode, COUNTRY_FLAG_W, COUNTRY_FLAG_H);
     if (flag.isNull() == false)
     {
         p.drawPixmap(COUNTRY_FLAG_X, 0, flag);
@@ -252,8 +270,8 @@ QIcon makeCountryCardIcon(const QString& countryCode, const bool pinned)
     QPainterPath rounded;
     rounded.addRoundedRect(flagRect, CARD_FLAG_RADIUS, CARD_FLAG_RADIUS);
     p.setClipPath(rounded);
-    p.drawPixmap(QPointF(0, 0), GeoUtils::svgPixmap(
-        QStringLiteral(":/flags/") + countryCode.toLower(), CARD_FLAG_W, CARD_FLAG_H));
+    p.drawPixmap(QPointF(0, 0), countryFlag(
+        countryCode, CARD_FLAG_W, CARD_FLAG_H));
     p.setClipping(false);
     p.setPen(CARD_FLAG_EDGE);
     p.setBrush(Qt::NoBrush);
@@ -310,8 +328,8 @@ QIcon makeAccordionHeaderIcon(const QString& countryCode,
         x += ACCORDION_STAR_ADVANCE;
     }
 
-    const QPixmap flag = GeoUtils::svgPixmap(
-        QStringLiteral(":/flags/") + countryCode.toLower(), COUNTRY_FLAG_W, COUNTRY_FLAG_H);
+    const QPixmap flag = countryFlag(
+        countryCode, COUNTRY_FLAG_W, COUNTRY_FLAG_H);
     if (flag.isNull() == false)
     {
         p.drawPixmap(x, 0, flag);
@@ -1525,7 +1543,13 @@ void CountriesPage::showWideCities()
         m_spinnerFrame = 0;
         m_citiesList->addItem(makeLoadingItem(loadingCitiesText()));
         m_spinnerTimer->start();
-        m_manager->fetchCities(m_selectedCode);
+        // Every keystroke in the search box comes through here again while
+        // the cities load; one fetch is enough.
+        if (m_pendingCityCodes.contains(m_selectedCode) == false)
+        {
+            m_pendingCityCodes.insert(m_selectedCode);
+            m_manager->fetchCities(m_selectedCode);
+        }
     }
     updateConnectButtons();
 }

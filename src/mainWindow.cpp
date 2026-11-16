@@ -123,6 +123,7 @@ MainWindow::MainWindow(QWidget* parent)
     resize(INITIAL_WINDOW_WIDTH, INITIAL_WINDOW_HEIGHT);
 
     m_manager = new VpnManager(this);
+    applyStatusCheckSetting();
     m_networkManager = new QNetworkAccessManager(this);
 
     // Root layout: sidebar + content
@@ -321,6 +322,8 @@ MainWindow::MainWindow(QWidget* parent)
             m_vpnPage, &VpnPage::updateQuickSettings);
     connect(m_settingsPage, &SettingsPage::countriesSidebarVisibilityChanged,
             this, &MainWindow::updateSplitView);
+    connect(m_settingsPage, &SettingsPage::statusCheckChanged,
+            this, &MainWindow::applyStatusCheckSetting);
 
     // CLI not responding page (index 7)
     m_cliNotRespondingPage = new CliNotRespondingPage();
@@ -347,6 +350,8 @@ MainWindow::MainWindow(QWidget* parent)
     {
         m_vpnPage->onStateChanged(VpnState::Error, details);
     });
+    connect(m_debugPage, &DebugPage::accountTypePreviewRequested,
+            m_manager, &VpnManager::previewAccountType);
     connect(m_debugPage, &DebugPage::homeErrorHidden, this, [this]()
     {
         m_vpnPage->onStateChanged(m_lastReportedState, m_lastReportedInfo);
@@ -589,6 +594,19 @@ void MainWindow::createTrayIcon()
     m_trayIcon->setIcon(trayIconFor(m_manager->currentState()));
     updateTrayTooltipAndAction(m_manager->currentState());
     m_trayIcon->show();
+}
+
+void MainWindow::applyStatusCheckSetting() const
+{
+    m_manager->setStatusPollInterval(AppConfig::statusCheckSeconds(AppConfig::instance().statusCheck()));
+}
+
+// The status may have changed while nobody was looking, and with background
+// checks set to rare or off the window would otherwise open on old news.
+void MainWindow::showEvent(QShowEvent* event)
+{
+    QWidget::showEvent(event);
+    m_manager->refreshStatus();
 }
 
 void MainWindow::setSignedIn(const bool signedIn)

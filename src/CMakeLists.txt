@@ -98,6 +98,8 @@ set(SOURCES
         widgets/pickerBase.h
         widgets/pickerDrawer.h
         widgets/pickerDrawer.cpp
+        widgets/chevronLabel.h
+        widgets/collapsibleSection.h
         widgets/plusDivider.h
         widgets/quickSettingSource.h
         widgets/quickSettingsMenu.h

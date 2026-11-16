@@ -156,6 +156,7 @@ export PATH="${QT_DIR}/bin:${PATH}"
 info "Building ProtonVPN Qt App (Release)..."
 cmake -S "${SCRIPT_DIR}/src" -B "${BUILD_ROOT}/native" \
       -DCMAKE_BUILD_TYPE=Release -G Ninja \
+      -DBUILD_TESTING=OFF \
       -DCMAKE_PREFIX_PATH="${QT_DIR}" \
       -DCMAKE_C_FLAGS="-march=${MARCH}" \
       -DCMAKE_CXX_FLAGS="-march=${MARCH}"

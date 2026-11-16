@@ -285,6 +285,35 @@ private slots:
         QVERIFY(StatusMonitor::parseCountryFromServer(QStringLiteral("server in Nowhere")).isEmpty());
         QVERIFY(StatusMonitor::parseCountryFromServer(QString()).isEmpty());
     }
+
+    //  loopCommand
+
+    void loopCommand_interval_sleepsThatLongBetweenRuns()
+    {
+        const QString command = StatusMonitor::loopCommand(QStringLiteral("protonvpn status"), 30);
+
+        QVERIFY(command.contains(QStringLiteral("do protonvpn status 2>&1;")));
+        QVERIFY(command.contains(QStringLiteral("sleep 30;")));
+    }
+
+    void loopCommand_noPeriodicPoll_runsOnceAndWaits()
+    {
+        // One snapshot per start or restart, then nothing until the next one.
+        const QString command = StatusMonitor::loopCommand(QStringLiteral("protonvpn status"),
+                                                           StatusMonitor::NO_PERIODIC_POLL);
+
+        QVERIFY(command.contains(QStringLiteral("do protonvpn status 2>&1;")));
+        QVERIFY(command.contains(QStringLiteral("sleep infinity;")));
+    }
+
+    void loopCommand_flatpakStatusCommand_isUsedAsGiven()
+    {
+        const QString command = StatusMonitor::loopCommand(
+            QStringLiteral("flatpak-spawn --host protonvpn status"), 15);
+
+        QVERIFY(command.contains(QStringLiteral("do flatpak-spawn --host protonvpn status 2>&1;")));
+        QVERIFY(command.contains(QStringLiteral("sleep 15;")));
+    }
 };
 
 QTEST_MAIN(TstStatusMonitor)

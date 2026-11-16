@@ -8,7 +8,7 @@ This is a **Qt6/C++23 desktop GUI** (Linux) that wraps the `protonvpn` CLI tool.
 MainWindow (QStackedWidget)
   ├── pages/  (NotInstalledPage, LoginPage, VpnPage, CountriesPage, AccountPage, SettingsPage)
   └── VpnManager  ─── runs `protonvpn <subcommand>` via QProcess
-        └── StatusMonitor  ─── long-lived subprocess polling `protonvpn status` every 15 s
+        └── StatusMonitor  ─── long-lived subprocess polling `protonvpn status` (every 30 s by default; `AppConfig::statusCheck()`)
 ```
 
 **Key data flows:**

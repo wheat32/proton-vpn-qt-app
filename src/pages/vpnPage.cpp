@@ -487,35 +487,8 @@ LocationPicker::LocationPicker(const QString& countryCode, const QString& countr
 
 bool LocationPicker::eventFilter(QObject* obj, QEvent* ev)
 {
-    // In free mode block the popup from opening on header click.
-    if (m_freeMode == true && ev->type() == QEvent::MouseButtonRelease)
-    {
-        const QWidget* w = qobject_cast<QWidget*>(obj);
-        // Consumed, so the popup does not open.
-        if (w != nullptr && w->objectName() == QLatin1String("locationPickerHeader")) return true;
-    }
     if (handleCommonEvents(obj, ev) == true) return true;
     return PickerBase::eventFilter(obj, ev);
-}
-
-void LocationPicker::setFreeMode(const bool free)
-{
-    m_freeMode = free;
-    if (m_header != nullptr)
-    {
-        m_header->setCursor(free ? Qt::ForbiddenCursor : Qt::PointingHandCursor);
-        m_header->setToolTip(free
-            ? tr("Location selection requires Proton VPN Plus.\n"
-                 "Proton will pick a free server for you automatically.")
-            : QString());
-    }
-    // Dim the labels to hint the control is inactive.
-    setStyleProperty(m_topLine,    "dimmed", free);
-    setStyleProperty(m_bottomLine, "dimmed", free);
-    if (m_chevron != nullptr)
-    {
-        m_chevron->setVisible(free == false && m_collapsed == false);
-    }
 }
 
 void LocationPicker::onRowClicked(QListWidgetItem* item)
@@ -1365,13 +1338,13 @@ VpnPage::VpnPage(VpnManager* manager, QWidget* parent)
     connect(m_manager, &VpnManager::accountTypeReady, this, [this](AccountType type)
     {
         m_isFreeUser = (type == AccountType::Free);
-        applyFreeUserMode();
+        relayoutPickers();
     });
     // Apply immediately if already known (e.g. app restart with cached state).
     if (m_manager->accountType() != AccountType::Unknown)
     {
         m_isFreeUser = (m_manager->accountType() == AccountType::Free);
-        applyFreeUserMode();
+        relayoutPickers();
     }
 
     // When the user changes location while connected/connecting, ask what to do
@@ -1789,18 +1762,14 @@ void VpnPage::updateQuickSettings()
 
 void VpnPage::setLocationPickerVisible(const bool visible)
 {
-    if (m_locationPicker != nullptr)
-    {
-        m_locationPicker->setVisible(visible);
-        if (m_drawer != nullptr)
-        {
-            m_drawer->notifyAvailability();
-        }
-    }
+    m_showLocationPicker = visible;
+    relayoutPickers();
 }
 
 void VpnPage::relayoutPickers() const
 {
+    // A free account cannot choose a location: Proton picks its server.
+    m_locationPicker->setVisible(m_showLocationPicker == true && m_isFreeUser == false);
     if (m_drawer != nullptr)
     {
         m_drawer->syncVisibility(m_isFreeUser, m_showFavoritesDropdown, m_favoritesEnabled);
@@ -2594,6 +2563,17 @@ void VpnPage::updateUi(const VpnState state, const QString& info)
 // backdrop would be a band rather than a pill.
 void VpnPage::syncInfoBackdrop() const
 {
+    const int available = std::max(0, m_scrollArea->viewport()->width() - 2 * PAGE_H_MARGIN);
+
+    // Most calls come from resize and layout steps that change nothing the
+    // width depends on; restyling and measuring the text again is skipped then.
+    const QString state = QStringList{m_infoLabel->text(), m_infoLabel->objectName(),
+                                      QString::number(m_infoLabel->textFormat()),
+                                      QString::number(available),
+                                      m_infoLabel->font().toString()}.join(QChar::LineFeed);
+    if (state == m_infoBackdropState) return;
+    m_infoBackdropState = state;
+
     setStyleProperty(m_infoLabel, "empty", m_infoLabel->text().isEmpty());
 
     QTextDocument doc;
@@ -2609,7 +2589,6 @@ void VpnPage::syncInfoBackdrop() const
     }
     const QMargins frame = m_infoLabel->contentsMargins();
     const int chrome = frame.left() + frame.right() + INFO_LABEL_SLACK;
-    const int available = std::max(0, m_scrollArea->viewport()->width() - 2 * PAGE_H_MARGIN);
     m_infoLabel->setFixedWidth(std::min(available, static_cast<int>(std::ceil(doc.idealWidth())) + chrome));
 }
 
@@ -2632,15 +2611,6 @@ void VpnPage::showErrorDetails()
     // Over the window, for the same reason as the Change Location dialog.
     ErrorDetailsDialog* dlg = new ErrorDetailsDialog(m_rawError, window());
     dlg->exec();
-}
-
-void VpnPage::applyFreeUserMode() const
-{
-    // Location picker: block/unblock user interaction.
-    m_locationPicker->setFreeMode(m_isFreeUser);
-
-    // Re-sync drawer visibility (hides recent + favorites for free users).
-    relayoutPickers();
 }
 
 // ---------------------------------------------------------------------------

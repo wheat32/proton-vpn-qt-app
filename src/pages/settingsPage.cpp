@@ -19,12 +19,15 @@
 #include "../widgets/globeAnimationCombo.h"
 #include "../widgets/numberSpinner.h"
 #include "../widgets/pixmapCache.h"
+#include "../widgets/collapsibleSection.h"
 #include "../widgets/plusDivider.h"
+#include "../widgets/styleUtils.h"
 #include "../widgets/quickSettingsMenu.h"
 #include "../widgets/styledComboBox.h"
 #include "../widgets/toastNotification.h"
 #include "../widgets/toggleWithStatus.h"
 
+#include <algorithm>
 #include <QApplication>
 #include <QButtonGroup>
 #include <QClipboard>
@@ -37,6 +40,8 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QRadioButton>
+#include <QResizeEvent>
+#include <QTabBar>
 #include <QScrollArea>
 #include <QSvgRenderer>
 #include <QSystemTrayIcon>
@@ -61,6 +66,14 @@ constexpr int DNS_ADDR_BOT_MARGIN           = 12;
 constexpr int DNS_ROW_BOT_MARGIN            = 4;
 
 // constructor outer layout
+// Wide layout: from this page width on, the tab bar gives way to a list of the
+// sections down the left, and the settings keep to a readable width instead of
+// stretching each label and its control to opposite edges.
+constexpr int WIDE_LAYOUT_MIN_WIDTH         = 900;
+constexpr int WIDE_NAV_WIDTH                = 190;
+constexpr int WIDE_NAV_SPACING              = 2;
+constexpr int WIDE_CONTENT_MAX_WIDTH        = 760;
+
 constexpr int OUTER_LAYOUT_MARGIN           = 16;
 constexpr int OUTER_LAYOUT_SPACING          = 12;
 constexpr int PAGE_LAYOUT_TOP_MARGIN        = 8;
@@ -70,6 +83,8 @@ constexpr int SECTION_HEADER_H_MARGIN       = 4;
 constexpr int SECTION_HEADER_LEFT_MARGIN    = 12;
 constexpr int SECTION_HEADER_TOP_MARGIN     = 16;
 constexpr int SECTION_HEADER_BOT_MARGIN     = 4;
+// The room a sectioned tab leaves above a section header, for a header in a card.
+constexpr int CARD_SECTION_GAP              = 19;
 constexpr int AUTOSTART_SUB_LEFT_MARGIN     = 32;
 constexpr int SERVER_ROW_LEFT_MARGIN        = 48;
 constexpr int SERVER_ROW_V_MARGIN           = 4;
@@ -101,6 +116,14 @@ constexpr int PORT_COPY_BTN_H              = 30;
 constexpr int PORT_FONT_SIZE_BOOST          = 1;
 
 // theme combo indices
+// The Connection Status Checks choices, in the order the combo lists them.
+constexpr AppConfig::StatusCheck STATUS_CHECK_CHOICES[] = {
+    AppConfig::StatusCheck::Frequent,
+    AppConfig::StatusCheck::Balanced,
+    AppConfig::StatusCheck::Relaxed,
+    AppConfig::StatusCheck::Off,
+};
+
 constexpr int THEME_IDX_SYSTEM              = 0;
 constexpr int THEME_IDX_DARK                = 1;
 constexpr int THEME_IDX_LIGHT               = 2;
@@ -256,12 +279,12 @@ QWidget* SettingsPage::makeComboRow(QWidget* parent, const QString& label,
 // SettingsPage constructor
 // ============================================================
 
-// Scroll area + "infoCard" container for a settings tab.
+// Scroll area + one container of rows for a settings tab. Not an #infoCard:
+// the rows paint the window color, so a card's color would show only between them.
 // static
 std::pair<QWidget*, QVBoxLayout*> SettingsPage::makeTabCard(QWidget* tabPage)
 {
     QWidget* card = new QWidget();
-    card->setObjectName(QStringLiteral("infoCard"));
     QVBoxLayout* cardLayout = new QVBoxLayout(card);
     cardLayout->setContentsMargins(0, 0, 0, 0);
     cardLayout->setSpacing(0);
@@ -332,7 +355,49 @@ std::pair<QWidget*, QVBoxLayout*> SettingsPage::addSectionCard(QWidget* parent, 
     return {card, cl};
 }
 
-// App tab: startup, notifications, history, favorites, logging, about.
+// A collapsed "Advanced" section at the end of `layout`, for the settings most
+// people never need. Its header looks the same on every tab; `inCard` is for a
+// tab that is one card of rows (the VPN tab), not sections with space between.
+// Opening the section scrolls it into view, since it opens below what is on screen.
+CollapsibleSection* SettingsPage::addAdvancedSection(QWidget* parent, QVBoxLayout* layout, const bool inCard)
+{
+    CollapsibleSection* section = new CollapsibleSection(tr("Advanced"), parent);
+    section->setHeaderMargins({SECTION_HEADER_LEFT_MARGIN, SECTION_HEADER_TOP_MARGIN,
+                               SETTING_ROW_H_MARGIN, SECTION_HEADER_BOT_MARGIN});
+    if (inCard == true)
+    {
+        layout->addSpacing(CARD_SECTION_GAP);
+    }
+    else
+    {
+        QFrame* sep = new QFrame(parent);
+        sep->setFrameShape(QFrame::HLine);
+        sep->setObjectName(QStringLiteral("appSectionDivider"));
+        layout->addWidget(sep);
+        section->contentLayout()->setSpacing(PAGE_LAYOUT_SPACING);
+    }
+    layout->addWidget(section);
+
+    connect(section, &CollapsibleSection::expandedChanged, this, [section](const bool expanded)
+    {
+        if (expanded == false) return;
+        QScrollArea* area = nullptr;
+        for (QWidget* w = section->parentWidget(); w != nullptr && area == nullptr; w = w->parentWidget())
+        {
+            area = qobject_cast<QScrollArea*>(w);
+        }
+        if (area == nullptr) return;
+        // After the layout has grown to hold the content.
+        QTimer::singleShot(0, area, [area, section]()
+        {
+            area->ensureWidgetVisible(section);
+        });
+    });
+    return section;
+}
+
+// App tab: startup, notifications, history, favorites, about, and the
+// advanced settings (logging, connection status checks).
 void SettingsPage::buildAppTab(QTabWidget* tabs)
 {
     // ============================================================
@@ -545,6 +610,7 @@ void SettingsPage::buildAppTab(QTabWidget* tabs)
 
         //  Plus Members Only divider
         m_appPlusDivider = new PlusDivider(appContent);
+        connect(m_appPlusDivider, &PlusDivider::expandedChanged, this, &SettingsPage::updatePlusSectionState);
         appContentLayout->addWidget(m_appPlusDivider);
 
         //  Plus-only section container
@@ -704,9 +770,73 @@ void SettingsPage::buildAppTab(QTabWidget* tabs)
             });
         }
 
-        //  Section: Logging
-        addHeader(tr("Logging"));
-        auto [loggingCard, loggingLayout] = makeAppCard();
+        //  Section: About
+        addHeader(tr("About"));
+        auto [aboutCard, aboutLayout] = makeAppCard();
+
+        {
+            const QPixmap arrowPm = GeoUtils::svgPixmap(
+                QStringLiteral(":/assets/box-arrow-up-right.svg"), ABOUT_ARROW_ICON_SIZE,
+                ABOUT_ARROW_ICON_SIZE,
+                QColor(QStringLiteral("#9999bb")));
+
+            QHBoxLayout* rl = nullptr;
+            std::tie(m_aboutRow, rl) = makeSettingRow(aboutCard,
+                                                      tr("About Proton VPN"),
+                                                      tr("View app version, licenses, and credits."));
+            m_aboutRow->setObjectName(QStringLiteral("appNavRow"));
+            m_aboutRow->setCursor(Qt::PointingHandCursor);
+            m_aboutRow->installEventFilter(this);
+            QLabel* iconLbl = new QLabel(m_aboutRow);
+            iconLbl->setPixmap(arrowPm);
+            iconLbl->setAttribute(Qt::WA_TransparentForMouseEvents);
+            rl->addWidget(iconLbl);
+            aboutLayout->addWidget(m_aboutRow);
+        }
+
+        //  Section: Advanced (collapsed until opened)
+        CollapsibleSection* advanced = addAdvancedSection(appContent, appContentLayout, /*inCard=*/false);
+        QWidget* advancedContent = advanced->content();
+        QVBoxLayout* advancedLayout = advanced->contentLayout();
+
+        //  Advanced > Connection Status
+        addSectionHeader(advancedContent, advancedLayout, tr("Connection Status"));
+        auto [statusCard, statusLayout] = addSectionCard(advancedContent, advancedLayout);
+
+        {
+            auto [row, rl] = makeSettingRow(statusCard,
+                                            tr("Background Status Checks"),
+                                            tr("How often the app checks in the background that the VPN is "
+                                               "still connected. Checking more often notices a dropped "
+                                               "connection sooner, but uses more CPU. With <b>Off</b>, the "
+                                               "status shown can be out of date until you open the window. "
+                                               "The app always checks when you connect, disconnect, or open "
+                                               "its window."));
+            StyledComboBox* statusCombo = new StyledComboBox(row);
+            // In the order of STATUS_CHECK_CHOICES.
+            statusCombo->addItem(tr("Most accurate (15 s)"));
+            statusCombo->addItem(tr("Balanced (30 s)"));
+            statusCombo->addItem(tr("Light (60 s)"));
+            statusCombo->addItem(tr("Off"));
+            statusCombo->setCurrentIndex(static_cast<int>(
+                std::ranges::find(STATUS_CHECK_CHOICES, AppConfig::instance().statusCheck())
+                - std::begin(STATUS_CHECK_CHOICES)));
+            connect(statusCombo, &QComboBox::currentIndexChanged, this, [this](const int idx)
+            {
+                if (idx < 0 || idx >= static_cast<int>(std::size(STATUS_CHECK_CHOICES))) return;
+                AppConfig::instance().setStatusCheck(STATUS_CHECK_CHOICES[idx]);
+                emit statusCheckChanged();
+            });
+            rl->addWidget(statusCombo);
+            statusLayout->addWidget(row);
+            addQuickSetting({.id = QuickSettingIds::STATUS_CHECK, .label = tr("Background Status Checks"),
+                             .section = Section::App, .kind = Kind::Combo, .row = row,
+                             .control = statusCombo});
+        }
+
+        //  Advanced > Logging
+        addSectionHeader(advancedContent, advancedLayout, tr("Logging"));
+        auto [loggingCard, loggingLayout] = addSectionCard(advancedContent, advancedLayout);
 
         {
             auto [row, rl] = makeSettingRow(loggingCard,
@@ -742,30 +872,6 @@ void SettingsPage::buildAppTab(QTabWidget* tabs)
             loggingLayout->addWidget(row);
             addQuickSetting({.id = QuickSettingIds::VERBOSE_LOGGING, .label = tr("Verbose Logging"),
                              .section = Section::App, .row = row, .control = verboseToggle});
-        }
-
-        //  Section: About
-        addHeader(tr("About"));
-        auto [aboutCard, aboutLayout] = makeAppCard();
-
-        {
-            const QPixmap arrowPm = GeoUtils::svgPixmap(
-                QStringLiteral(":/assets/box-arrow-up-right.svg"), ABOUT_ARROW_ICON_SIZE,
-                ABOUT_ARROW_ICON_SIZE,
-                QColor(QStringLiteral("#9999bb")));
-
-            QHBoxLayout* rl = nullptr;
-            std::tie(m_aboutRow, rl) = makeSettingRow(aboutCard,
-                                                      tr("About Proton VPN"),
-                                                      tr("View app version, licenses, and credits."));
-            m_aboutRow->setObjectName(QStringLiteral("appNavRow"));
-            m_aboutRow->setCursor(Qt::PointingHandCursor);
-            m_aboutRow->installEventFilter(this);
-            QLabel* iconLbl = new QLabel(m_aboutRow);
-            iconLbl->setPixmap(arrowPm);
-            iconLbl->setAttribute(Qt::WA_TransparentForMouseEvents);
-            rl->addWidget(iconLbl);
-            aboutLayout->addWidget(m_aboutRow);
         }
 
         appContentLayout->addStretch();
@@ -935,9 +1041,20 @@ void SettingsPage::buildAppearanceTab(QTabWidget* tabs)
             mainPageLayout->addWidget(row);
         }
 
+        //  Plus Members Only divider: a free account has no dropdowns to show
+        m_appearancePlusDivider = new PlusDivider(appearanceContent);
+        connect(m_appearancePlusDivider, &PlusDivider::expandedChanged, this, &SettingsPage::updatePlusSectionState);
+        appearanceContentLayout->addWidget(m_appearancePlusDivider);
+
+        m_appearancePlusSection = new QWidget(appearanceContent);
+        QVBoxLayout* appearancePlusLayout = new QVBoxLayout(m_appearancePlusSection);
+        appearancePlusLayout->setContentsMargins(0, 0, 0, 0);
+        appearancePlusLayout->setSpacing(PAGE_LAYOUT_SPACING);
+        appearanceContentLayout->addWidget(m_appearancePlusSection);
+
         //  Section: Main Page Dropdowns
-        addSectionHeader(appearanceContent, appearanceContentLayout, tr("Main Page Dropdowns"));
-        auto [dropdownCard, dropdownLayout] = addSectionCard(appearanceContent, appearanceContentLayout);
+        addSectionHeader(m_appearancePlusSection, appearancePlusLayout, tr("Main Page Dropdowns"));
+        auto [dropdownCard, dropdownLayout] = addSectionCard(m_appearancePlusSection, appearancePlusLayout);
 
         //  Show Selected Location Picker
         {
@@ -954,7 +1071,7 @@ void SettingsPage::buildAppearanceTab(QTabWidget* tabs)
             rl->addWidget(toggle);
             dropdownLayout->addWidget(row);
             addQuickSetting({.id = QuickSettingIds::SHOW_LOCATION_PICKER, .label = tr("Show Selected Location"),
-                             .section = Section::Appearance, .row = row, .control = toggle});
+                             .section = Section::Appearance, .row = row, .control = toggle, .plusOnly = true});
         }
 
         //  Show Favorites Dropdown
@@ -985,7 +1102,7 @@ void SettingsPage::buildAppearanceTab(QTabWidget* tabs)
 
             dropdownLayout->addWidget(row);
             addQuickSetting({.id = QuickSettingIds::SHOW_FAVORITES_DROPDOWN, .label = tr("Show Favorites Dropdown"),
-                             .section = Section::Appearance, .row = row, .control = toggle});
+                             .section = Section::Appearance, .row = row, .control = toggle, .plusOnly = true});
         }
 
         appearanceContentLayout->addStretch();
@@ -1028,7 +1145,9 @@ void SettingsPage::buildVpnTab(QTabWidget* tabs)
         QVBoxLayout* wl = new QVBoxLayout(wrapper);
         wl->setContentsMargins(0, WRAPPER_TOP_MARGIN, 0, 0);
         wl->setSpacing(0);
-        wl->addWidget(vpnCard, 1);
+        // The card ends with its last row; what is left of the tab stays empty.
+        wl->addWidget(vpnCard);
+        wl->addStretch(1);
         scroll->setWidget(wrapper);
         scroll->setWidgetResizable(true);
     }
@@ -1085,13 +1204,6 @@ void SettingsPage::buildVpnTab(QTabWidget* tabs)
         vpnFirst = false;
         vpnCardLayout->addWidget(w);
     };
-
-    //  Anonymous Crash Reports
-    addVpn(offer(makeToggleRow(vpnCard,
-                               tr("Anonymous Crash Reports"),
-                               tr("Send anonymous crash reports to Proton for the VPN CLI tool - not this Qt app."),
-                               QStringLiteral("anonymous-crash-reports")),
-                 QuickSettingIds::CRASH_REPORTS, tr("Crash Reports"), Kind::Toggle, false));
 
     //  IPv6
     addVpn(offer(makeToggleRow(vpnCard,
@@ -1227,6 +1339,7 @@ void SettingsPage::buildVpnTab(QTabWidget* tabs)
     //  Plus Members Only divider
     addDivider(vpnCardLayout, vpnCard);
     m_plusDivider = new PlusDivider(vpnCard);
+    connect(m_plusDivider, &PlusDivider::expandedChanged, this, &SettingsPage::updatePlusSectionState);
     vpnCardLayout->addWidget(m_plusDivider);
 
     m_plusSection = new QWidget(vpnCard);
@@ -1285,9 +1398,34 @@ void SettingsPage::buildVpnTab(QTabWidget* tabs)
                                }),
                   QuickSettingIds::NETSHIELD, tr("NetShield"), Kind::Combo, true));
 
+    //  Advanced (collapsed until opened)
+    CollapsibleSection* advanced = addAdvancedSection(vpnCard, vpnCardLayout, /*inCard=*/true);
+    QWidget* advancedContent = advanced->content();
+    QVBoxLayout* advancedLayout = advanced->contentLayout();
+
+    //  Anonymous Crash Reports
+    advancedLayout->addWidget(offer(
+        makeToggleRow(advancedContent,
+                      tr("Anonymous Crash Reports"),
+                      tr("Send anonymous crash reports to Proton for the VPN CLI tool - not this Qt app."),
+                      QStringLiteral("anonymous-crash-reports")),
+        QuickSettingIds::CRASH_REPORTS, tr("Crash Reports"), Kind::Toggle, false));
+
+    //  The advanced settings only Plus members can change
+    addDivider(advancedLayout, advancedContent);
+    m_advancedPlusDivider = new PlusDivider(advancedContent);
+    connect(m_advancedPlusDivider, &PlusDivider::expandedChanged, this, &SettingsPage::updatePlusSectionState);
+    advancedLayout->addWidget(m_advancedPlusDivider);
+
+    m_advancedPlusSection = new QWidget(advancedContent);
+    QVBoxLayout* advancedPlusLayout = new QVBoxLayout(m_advancedPlusSection);
+    advancedPlusLayout->setContentsMargins(0, 0, 0, 0);
+    advancedPlusLayout->setSpacing(0);
+    advancedLayout->addWidget(m_advancedPlusSection);
+
     //  Port Forwarding
     {
-        QWidget* pfRow = makeToggleRow(m_plusSection,
+        QWidget* pfRow = makeToggleRow(m_advancedPlusSection,
                                        tr("Port Forwarding"),
                                        tr("Bypass firewalls to connect to P2P servers and devices in your local network. "
                                           "<a href='https://protonvpn.com/support/port-forwarding'>Learn more</a>"),
@@ -1311,12 +1449,12 @@ void SettingsPage::buildVpnTab(QTabWidget* tabs)
             }
         });
 
-        addPlus(pfRow);
+        advancedPlusLayout->addWidget(pfRow);
         addQuickSetting({.id = QuickSettingIds::PORT_FORWARDING, .label = tr("Port Forwarding"),
                          .section = Section::Vpn, .row = pfRow, .control = m_portForwardingToggle,
                          .plusOnly = true});
 
-        m_settingsPortRow = new QWidget(m_plusSection);
+        m_settingsPortRow = new QWidget(m_advancedPlusSection);
         m_settingsPortRow->setObjectName(QStringLiteral("settingsPortRow"));
         QHBoxLayout* portRowLayout = new QHBoxLayout(m_settingsPortRow);
         portRowLayout->setContentsMargins(PORT_ROW_H_MARGIN, 0, PORT_ROW_H_MARGIN, PORT_ROW_BOT_MARGIN);
@@ -1369,7 +1507,7 @@ void SettingsPage::buildVpnTab(QTabWidget* tabs)
 
         portRowLayout->addWidget(btnGroup, 0, Qt::AlignVCenter);
         portRowLayout->addStretch();
-        plusLayout->addWidget(m_settingsPortRow);
+        advancedPlusLayout->addWidget(m_settingsPortRow);
         m_settingsPortRow->setVisible(false);
 
         if (m_natPmpManager != nullptr)
@@ -1409,9 +1547,9 @@ void SettingsPage::buildVpnTab(QTabWidget* tabs)
 
     //  Custom DNS
     {
-        addDivider(plusLayout, m_plusSection);
+        addDivider(advancedPlusLayout, m_advancedPlusSection);
 
-        auto [dnsRow, dnsRl] = makeSettingRow(m_plusSection,
+        auto [dnsRow, dnsRl] = makeSettingRow(m_advancedPlusSection,
                                               tr("Custom DNS"),
                                               tr("Override the VPN DNS with your own resolver(s). "
                                                  "Separate multiple addresses with a comma."));
@@ -1419,9 +1557,9 @@ void SettingsPage::buildVpnTab(QTabWidget* tabs)
                                   SETTING_ROW_H_MARGIN, DNS_ROW_BOT_MARGIN);
         m_dnsToggle = new ToggleWithStatus(dnsRow);
         dnsRl->addWidget(m_dnsToggle);
-        plusLayout->addWidget(dnsRow);
+        advancedPlusLayout->addWidget(dnsRow);
 
-        QWidget* dnsAddrRow = new QWidget(m_plusSection);
+        QWidget* dnsAddrRow = new QWidget(m_advancedPlusSection);
         m_dnsAddrRow = dnsAddrRow;
         dnsAddrRow->setVisible(false);
         QHBoxLayout* dnsAddrRl = new QHBoxLayout(dnsAddrRow);
@@ -1434,7 +1572,7 @@ void SettingsPage::buildVpnTab(QTabWidget* tabs)
         m_dnsApplyBtn->setObjectName(QStringLiteral("secondaryButton"));
         m_dnsApplyBtn->setFixedHeight(DNS_APPLY_BTN_HEIGHT);
         dnsAddrRl->addWidget(m_dnsApplyBtn);
-        plusLayout->addWidget(dnsAddrRow);
+        advancedPlusLayout->addWidget(dnsAddrRow);
         addQuickSetting({.id = QuickSettingIds::CUSTOM_DNS, .label = tr("Custom DNS"),
                          .section = Section::Vpn, .kind = Kind::CustomDns, .row = dnsRow,
                          .control = m_dnsToggle, .dnsEdit = m_dnsEdit, .dnsApply = m_dnsApplyBtn,
@@ -1489,7 +1627,6 @@ void SettingsPage::buildVpnTab(QTabWidget* tabs)
         });
     }
 
-    vpnCardLayout->addStretch();
 }
 
 
@@ -1575,13 +1712,26 @@ SettingsPage::SettingsPage(VpnManager* manager, NatPmpManager* natPmpManager, QW
     titleLabel->setObjectName(QStringLiteral("sectionTitle"));
     outerLayout->addWidget(titleLabel);
 
+    QHBoxLayout* bodyLayout = new QHBoxLayout();
+    bodyLayout->setContentsMargins(0, 0, 0, 0);
+    bodyLayout->setSpacing(OUTER_LAYOUT_SPACING);
+    outerLayout->addLayout(bodyLayout, 1);
+
+    // The wide layout's section list; filled in below, once the tabs exist.
+    m_nav = new QWidget(this);
+    m_nav->setFixedWidth(WIDE_NAV_WIDTH);
+    m_nav->setVisible(false);
+    bodyLayout->addWidget(m_nav);
+
     QTabWidget* tabs = new QTabWidget(this);
     tabs->setObjectName(QStringLiteral("settingsTabs"));
-    outerLayout->addWidget(tabs, 1);
+    m_tabs = tabs;
+    bodyLayout->addWidget(tabs, 1);
 
     buildAppTab(tabs);
     buildAppearanceTab(tabs);
     buildVpnTab(tabs);
+    buildSectionNav();
 
     updatePlusSectionState();
 
@@ -1651,6 +1801,92 @@ SettingsPage::SettingsPage(VpnManager* manager, NatPmpManager* natPmpManager, QW
 // SettingsPage slots
 // ============================================================
 
+// One button per tab, for the wide layout's section list.
+void SettingsPage::buildSectionNav()
+{
+    QVBoxLayout* navLayout = new QVBoxLayout(m_nav);
+    navLayout->setContentsMargins(0, 0, 0, 0);
+    navLayout->setSpacing(WIDE_NAV_SPACING);
+
+    m_navGroup = new QButtonGroup(this);
+    m_navGroup->setExclusive(true);
+    for (int i = 0; i < m_tabs->count(); ++i)
+    {
+        QPushButton* button = new QPushButton(m_tabs->tabText(i), m_nav);
+        button->setObjectName(QStringLiteral("settingsNavButton"));
+        button->setCheckable(true);
+        button->setCursor(Qt::PointingHandCursor);
+        button->setChecked(i == m_tabs->currentIndex());
+        m_navGroup->addButton(button, i);
+        navLayout->addWidget(button);
+    }
+    navLayout->addStretch();
+
+    connect(m_navGroup, &QButtonGroup::idClicked, m_tabs, &QTabWidget::setCurrentIndex);
+    connect(m_tabs, &QTabWidget::currentChanged, this, [this](const int index)
+    {
+        QAbstractButton* button = m_navGroup->button(index);
+        if (button != nullptr)
+        {
+            button->setChecked(true);
+        }
+    });
+
+    // Each tab's content sits in the middle of its pane once it stops growing.
+    const QList<QScrollArea*> scrollAreas = m_tabs->findChildren<QScrollArea*>();
+    for (QScrollArea* scroll : scrollAreas)
+    {
+        scroll->setAlignment(Qt::AlignHCenter | Qt::AlignTop);
+    }
+}
+
+void SettingsPage::setWideLayout(const bool wide)
+{
+    if (m_wideLayout == wide) return;
+    m_wideLayout = wide;
+
+    m_nav->setVisible(wide);
+    m_tabs->tabBar()->setVisible(wide == false);
+    // The pane is drawn with square top corners to meet the tab bar.
+    setStyleProperty(m_tabs, "wide", wide);
+
+    const QList<QScrollArea*> scrollAreas = m_tabs->findChildren<QScrollArea*>();
+    for (const QScrollArea* scroll : scrollAreas)
+    {
+        if (scroll->widget() != nullptr)
+        {
+            scroll->widget()->setMaximumWidth(wide == true ? WIDE_CONTENT_MAX_WIDTH : QWIDGETSIZE_MAX);
+        }
+    }
+    // Once the content has its new width.
+    QTimer::singleShot(0, this, &SettingsPage::positionRefreshButton);
+}
+
+void SettingsPage::resizeEvent(QResizeEvent* event)
+{
+    QWidget::resizeEvent(event);
+    setWideLayout(width() >= WIDE_LAYOUT_MIN_WIDTH);
+}
+
+// Keeps the floating Refresh button at the top-right of the VPN tab's
+// settings, which in the wide layout end before the tab does.
+void SettingsPage::positionRefreshButton() const
+{
+    if (m_vpnTabWidget == nullptr || m_refreshBtn == nullptr) return;
+
+    int rightEdge = m_vpnTabWidget->width();
+    const QScrollArea* scroll = m_vpnTabWidget->findChild<QScrollArea*>();
+    if (scroll != nullptr && scroll->widget() != nullptr)
+    {
+        const QWidget* content = scroll->widget();
+        rightEdge = qMin(rightEdge, content->mapTo(m_vpnTabWidget, QPoint(content->width(), 0)).x());
+    }
+    const int btnW = m_refreshBtn->sizeHint().width();
+    m_refreshBtn->setGeometry(rightEdge - btnW - REFRESH_OVERLAY_MARGIN,
+                              REFRESH_OVERLAY_MARGIN, btnW, REFRESH_BTN_HEIGHT);
+    m_refreshBtn->raise();
+}
+
 void SettingsPage::refresh()
 {
     setLoading(true);
@@ -1663,10 +1899,7 @@ bool SettingsPage::eventFilter(QObject* obj, QEvent* event)
     if (obj == m_vpnTabWidget && m_refreshBtn != nullptr
         && (event->type() == QEvent::Resize || event->type() == QEvent::Show))
     {
-        const int btnW = m_refreshBtn->sizeHint().width();
-        m_refreshBtn->setGeometry(m_vpnTabWidget->width() - btnW - REFRESH_OVERLAY_MARGIN,
-                                  REFRESH_OVERLAY_MARGIN, btnW, REFRESH_BTN_HEIGHT);
-        m_refreshBtn->raise();
+        positionRefreshButton();
     }
 
     // Fire the About dialog when the user clicks the About nav row.
@@ -1688,10 +1921,13 @@ void SettingsPage::updatePlusSectionState() const
 {
     const bool isFree = m_manager->accountType() == AccountType::Free;
 
-    auto applyToSection = [&](QWidget* section, QWidget* divider)
+    // A free account sees each group of Plus settings folded away under its
+    // "Available to Plus Members" header, and faded and disabled when opened.
+    auto applyToSection = [&](QWidget* section, PlusDivider* divider)
     {
         if (section == nullptr || divider == nullptr) return;
         divider->setVisible(isFree);
+        section->setVisible(isFree == false || divider->isExpanded() == true);
         section->setEnabled(isFree == false);
         if (isFree == true)
         {
@@ -1709,8 +1945,10 @@ void SettingsPage::updatePlusSectionState() const
         }
     };
 
-    applyToSection(m_plusSection,    m_plusDivider);
-    applyToSection(m_appPlusSection, m_appPlusDivider);
+    applyToSection(m_plusSection,         m_plusDivider);
+    applyToSection(m_advancedPlusSection, m_advancedPlusDivider);
+    applyToSection(m_appPlusSection,      m_appPlusDivider);
+    applyToSection(m_appearancePlusSection, m_appearancePlusDivider);
 }
 
 void SettingsPage::setLoading(const bool loading)
