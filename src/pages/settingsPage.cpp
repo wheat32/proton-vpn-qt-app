@@ -11,6 +11,7 @@
 #include "../uiHelpers.h"
 #include "../cli/platformUtils.h"
 #include "../quickSettingIds.h"
+#include "../dialogs/aboutDialog.h"
 #include "../dialogs/natpmpcDialog.h"
 #include "../dialogs/reconnectDialog.h"
 #include "../dialogs/startupServerDialog.h"
@@ -27,27 +28,19 @@
 #include <QApplication>
 #include <QButtonGroup>
 #include <QClipboard>
-#include <QDebug>
 #include <QDir>
-#include <QSignalBlocker>
+#include <QFile>
+#include <QFileInfo>
 #include <QFrame>
 #include <QGraphicsOpacityEffect>
-#include <QGridLayout>
-// ReSharper disable once CppUnusedIncludeDirective
-#include <QJsonDocument> // Ignore unused include warning; we do use QJsonDocument
-#include <QJsonObject>
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QRadioButton>
 #include <QScrollArea>
-#include <QSpinBox>
-#include <QStandardPaths>
+#include <QSvgRenderer>
 #include <QSystemTrayIcon>
-#include <QTextBrowser>
-#include <QVersionNumber>
 #include <QVBoxLayout>
-#include <optional>
 #include <tuple>
 
 namespace
@@ -63,6 +56,9 @@ constexpr int SETTING_ROW_V_MARGIN          = 12;
 constexpr int SETTING_ROW_SPACING           = 16;
 constexpr int COMBO_MIN_WIDTH               = 160;
 constexpr int DNS_ADDR_BOT_MARGIN           = 12;
+// Under the custom DNS row: tighter than a row's usual margin, as the server
+// field sits right below.
+constexpr int DNS_ROW_BOT_MARGIN            = 4;
 
 // constructor outer layout
 constexpr int OUTER_LAYOUT_MARGIN           = 16;
@@ -118,7 +114,9 @@ constexpr double PLUS_SECTION_DISABLED_OPACITY = 0.45;
 
 // eventFilter refresh button overlay
 constexpr int REFRESH_OVERLAY_MARGIN        = 8;
-constexpr int REFRESH_OVERLAY_H             = 30;
+
+// The arrow at the end of the About row.
+constexpr int ABOUT_ARROW_ICON_SIZE         = 16;
 
 
 #ifdef QT_DEBUG
@@ -509,7 +507,6 @@ void SettingsPage::buildAppTab(QTabWidget* tabs)
         //  Section: Notifications
         addHeader(tr("Notifications"));
         auto [notifCard, notifLayout] = makeAppCard();
-        (void)notifLayout;
 
         {
             auto [row, rl] = makeSettingRow(notifCard,
@@ -750,12 +747,11 @@ void SettingsPage::buildAppTab(QTabWidget* tabs)
         //  Section: About
         addHeader(tr("About"));
         auto [aboutCard, aboutLayout] = makeAppCard();
-        (void)aboutLayout;
 
         {
             const QPixmap arrowPm = GeoUtils::svgPixmap(
-                QStringLiteral(":/assets/box-arrow-up-right.svg"), SETTING_ROW_H_MARGIN,
-                SETTING_ROW_H_MARGIN,
+                QStringLiteral(":/assets/box-arrow-up-right.svg"), ABOUT_ARROW_ICON_SIZE,
+                ABOUT_ARROW_ICON_SIZE,
                 QColor(QStringLiteral("#9999bb")));
 
             QHBoxLayout* rl = nullptr;
@@ -799,9 +795,10 @@ void SettingsPage::buildAppearanceTab(QTabWidget* tabs)
                                             tr("Theme"),
                                             tr("Choose the color scheme for the app."));
             m_themeCombo = new StyledComboBox(row);
-            m_themeCombo->addItem(tr("System Settings"), QStringLiteral("system"));
-            m_themeCombo->addItem(tr("Dark"),            QStringLiteral("dark"));
-            m_themeCombo->addItem(tr("Light"),           QStringLiteral("light"));
+            // In the order of the THEME_IDX_* constants.
+            m_themeCombo->addItem(tr("System Settings"));
+            m_themeCombo->addItem(tr("Dark"));
+            m_themeCombo->addItem(tr("Light"));
 
             {
                 const AppConfig::Theme t = AppConfig::instance().theme();
@@ -1418,9 +1415,8 @@ void SettingsPage::buildVpnTab(QTabWidget* tabs)
                                               tr("Custom DNS"),
                                               tr("Override the VPN DNS with your own resolver(s). "
                                                  "Separate multiple addresses with a comma."));
-        // Tighter at the bottom: the server field sits right below.
         dnsRl->setContentsMargins(SETTING_ROW_H_MARGIN, SETTING_ROW_V_MARGIN,
-                                  SETTING_ROW_H_MARGIN, DNS_ADDR_BOT_MARGIN / 3);
+                                  SETTING_ROW_H_MARGIN, DNS_ROW_BOT_MARGIN);
         m_dnsToggle = new ToggleWithStatus(dnsRow);
         dnsRl->addWidget(m_dnsToggle);
         plusLayout->addWidget(dnsRow);
@@ -1616,14 +1612,14 @@ SettingsPage::SettingsPage(VpnManager* manager, NatPmpManager* natPmpManager, QW
             }
             else
             {
-                if (m_vpnCard != nullptr)    { m_vpnCard->setEnabled(false); }
-                if (m_refreshBtn != nullptr) { m_refreshBtn->setEnabled(false); }
+                m_vpnCard->setEnabled(false);
+                m_refreshBtn->setEnabled(false);
             }
             return;
         }
 
-        if (m_vpnCard != nullptr)    { m_vpnCard->setEnabled(transitioning == false); }
-        if (m_refreshBtn != nullptr) { m_refreshBtn->setEnabled(transitioning == false); }
+        m_vpnCard->setEnabled(transitioning == false);
+        m_refreshBtn->setEnabled(transitioning == false);
         if (transitioning == false)
         {
             updatePlusSectionState();
@@ -1636,8 +1632,8 @@ SettingsPage::SettingsPage(VpnManager* manager, NatPmpManager* natPmpManager, QW
                                 || s == VpnState::Disconnecting;
         if (transitioning == true)
         {
-            if (m_vpnCard != nullptr)    { m_vpnCard->setEnabled(false); }
-            if (m_refreshBtn != nullptr) { m_refreshBtn->setEnabled(false); }
+            m_vpnCard->setEnabled(false);
+            m_refreshBtn->setEnabled(false);
         }
     }
 
@@ -1669,7 +1665,7 @@ bool SettingsPage::eventFilter(QObject* obj, QEvent* event)
     {
         const int btnW = m_refreshBtn->sizeHint().width();
         m_refreshBtn->setGeometry(m_vpnTabWidget->width() - btnW - REFRESH_OVERLAY_MARGIN,
-                                  REFRESH_OVERLAY_MARGIN, btnW, REFRESH_OVERLAY_H);
+                                  REFRESH_OVERLAY_MARGIN, btnW, REFRESH_BTN_HEIGHT);
         m_refreshBtn->raise();
     }
 
@@ -1719,7 +1715,6 @@ void SettingsPage::updatePlusSectionState() const
 
 void SettingsPage::setLoading(const bool loading)
 {
-    m_loading = loading;
     m_refreshBtn->setEnabled(loading == false);
     m_refreshBtn->setText(loading == true ? tr("Loading\u2026") : tr("↻ Refresh"));
     m_statusLabel->setVisible(loading);
@@ -1818,20 +1813,17 @@ void SettingsPage::onSettingsReady(const QMap<QString, QString>& info)
 // Auto-start helpers (XDG autostart .desktop file)
 // ---------------------------------------------------------------------------
 
-QString SettingsPage::autoStartFilePath()
-{
-    return QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
-           + QStringLiteral("/autostart/proton-vpn-qt.desktop");
-}
-
+// The entry lives where PlatformUtils::autostartFilePath() says: in the
+// Flatpak that is the host's autostart directory, not the sandbox's own
+// config directory, which no desktop reads.
 bool SettingsPage::autoStartEnabled()
 {
-    return QFileInfo::exists(autoStartFilePath());
+    return QFileInfo::exists(PlatformUtils::autostartFilePath());
 }
 
 bool SettingsPage::setAutoStart(const bool enable, QString& errorOut)
 {
-    const QString filePath = autoStartFilePath();
+    const QString filePath = PlatformUtils::autostartFilePath();
 
     if (enable == true)
     {
@@ -1854,7 +1846,7 @@ bool SettingsPage::setAutoStart(const bool enable, QString& errorOut)
             return true;
         }
 
-        // Ensure ~/.config/autostart/ exists.
+        // Ensure the autostart directory exists.
         QDir targetDir = QFileInfo(filePath).dir();
         if (targetDir.mkpath(targetDir.absolutePath()) == false)
         {

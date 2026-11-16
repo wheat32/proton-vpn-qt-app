@@ -8,10 +8,56 @@ on:
 permissions:
   contents: write   # needed to create releases and upload assets
 
+# One run at a time, so two pushes of the same new version cannot both publish it.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
+  # Only the first push with a new app_version is a release: once its tag
+  # exists, every other job is skipped. To republish a version, delete its tag.
+  check-version:
+    name: Check for a New Version
+    runs-on: ubuntu-26.04
+    outputs:
+      publish: ${{ steps.released.outputs.publish }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Check whether this version is already released
+        id: released
+        run: |
+          VERSION=$(jq -r '.app_version' src/version.json)
+          if [[ -z "$VERSION" || "$VERSION" == "null" ]]; then
+            echo "::error::Could not read app_version from src/version.json."
+            exit 1
+          fi
+          TAG="v$VERSION"
+
+          # ls-remote exits 0 when the tag exists and 2 when it does not.
+          status=0
+          git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null || status=$?
+          if [[ "$status" -eq 0 ]]; then
+            echo "::notice::$TAG is already released. Nothing is built or published for this push."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          elif [[ "$status" -eq 2 ]]; then
+            echo "$TAG is not released yet. Building and publishing it."
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Could not check whether $TAG exists (git ls-remote exited with $status)."
+            exit 1
+          fi
+
   build-native:
     name: Build Native x86_64 (Ubuntu)
     runs-on: ubuntu-26.04
+    needs: check-version
+    if: needs.check-version.outputs.publish == 'true'
 
     steps:
       - name: Checkout
@@ -31,6 +77,12 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
 
+      # A failing test fails this job, which stops the release.
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure --no-tests=error
+        env:
+          QT_QPA_PLATFORM: offscreen
+
       - name: Package tarball
         run: |
           mkdir -p dist
@@ -46,6 +98,8 @@ jobs:
   build-flatpak:
     name: Build Flatpak x86_64 (Ubuntu)
     runs-on: ubuntu-26.04
+    needs: check-version
+    if: needs.check-version.outputs.publish == 'true'
 
     steps:
       - name: Checkout
@@ -115,6 +169,8 @@ jobs:
   build-flatpak-arm64:
     name: Build Flatpak ARM64 (Ubuntu)
     runs-on: ubuntu-26.04-arm
+    needs: check-version
+    if: needs.check-version.outputs.publish == 'true'
 
     steps:
       - name: Checkout
@@ -181,6 +237,8 @@ jobs:
   build-appimage-standalone:
     name: Build AppImage Standalone x86_64 (Ubuntu)
     runs-on: ubuntu-26.04
+    needs: check-version
+    if: needs.check-version.outputs.publish == 'true'
 
     steps:
       - name: Checkout
@@ -224,6 +282,8 @@ jobs:
   build-appimage-standalone-compat:
     name: Build AppImage Standalone Compat x86_64 (Ubuntu 24.04)
     runs-on: ubuntu-24.04
+    needs: check-version
+    if: needs.check-version.outputs.publish == 'true'
 
     steps:
       - name: Checkout
@@ -264,6 +324,8 @@ jobs:
   build-appimage-standalone-arm64:
     name: Build AppImage Standalone ARM64 (Ubuntu 24.04)
     runs-on: ubuntu-24.04-arm
+    needs: check-version
+    if: needs.check-version.outputs.publish == 'true'
 
     steps:
       - name: Checkout
@@ -298,6 +360,8 @@ jobs:
   build-appimage-lite:
     name: Build AppImage Lite x86_64 (Ubuntu)
     runs-on: ubuntu-26.04
+    needs: check-version
+    if: needs.check-version.outputs.publish == 'true'
 
     steps:
       - name: Checkout
@@ -334,6 +398,8 @@ jobs:
   build-appimage-lite-arm64:
     name: Build AppImage Lite ARM64 (Ubuntu 24.04)
     runs-on: ubuntu-24.04-arm
+    needs: check-version
+    if: needs.check-version.outputs.publish == 'true'
 
     steps:
       - name: Checkout
@@ -368,7 +434,8 @@ jobs:
   release:
     name: Create GitHub Release
     runs-on: ubuntu-26.04
-    needs: [build-native, build-flatpak, build-flatpak-arm64, build-appimage-standalone, build-appimage-standalone-compat, build-appimage-standalone-arm64, build-appimage-lite, build-appimage-lite-arm64]
+    needs: [check-version, build-native, build-flatpak, build-flatpak-arm64, build-appimage-standalone, build-appimage-standalone-compat, build-appimage-standalone-arm64, build-appimage-lite, build-appimage-lite-arm64]
+    if: needs.check-version.outputs.publish == 'true'
 
     steps:
       - name: Checkout

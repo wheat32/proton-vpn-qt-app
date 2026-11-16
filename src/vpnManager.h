@@ -4,20 +4,12 @@
 #include <QString>
 #include <QMap>
 #include <memory>
+#include "cli/connectQueue.h"
 #include "cli/signin/signinFlow.h"
+#include "vpnState.h"
 
 class StatusMonitor; // cli/statusMonitor.h - forward-declared to keep this
                      // header lightweight; full type used only in vpnManager.cpp.
-
-enum class VpnState
-{
-    Unknown,
-    Disconnected,
-    Connecting,
-    Connected,
-    Disconnecting,
-    Error
-};
 
 enum class AccountType
 {
@@ -47,6 +39,10 @@ public:
     // Signs in again with an authenticator or recovery code instead of the security key.
     void useAuthenticatorCode();
     void signOut();
+    // Connects, or switches the connection, to a country and city. Asked for
+    // while another connect or disconnect is still running, it waits for that
+    // to finish and then replaces it; it also calls off a startup auto-connect
+    // that has not connected yet (see cli/connectQueue.h).
     void connectVpn(const QString& country = QString(), const QString& city = QString());
     // Like connectVpn(), but for the startup auto-connect path only: waits
     // for NetworkManager to report a ready state before the first attempt,
@@ -110,12 +106,16 @@ signals:
     void connectionCountryKnown(const QString& countryCode);
     void countriesReady(const QMap<QString, QString>& countries); // name -> code
     void citiesReady(const QString& countryCode, const QList<QPair<QString, QString>>& cities); // (city, features)
+    // The CLI could not list the countries, or a country's cities (not signed
+    // in, no network, a CLI error). Whatever was listed before stays in
+    // countries() and cities(); these only tell a waiting list to stop waiting.
+    void countriesFetchFailed();
+    void citiesFetchFailed(const QString& countryCode);
     void infoReady(const QMap<QString, QString>& info);
     void settingsReady(const QMap<QString, QString>& settings);
     void configApplied(const QString& output);
     void cliVersionReady(const QString& version);
     void accountTypeReady(AccountType type);
-    void errorOccurred(const QString& error);
     // Emitted instead of loginStatusResult when `protonvpn info` does not exit
     // within the startup time limit - typically because the CLI is waiting on
     // a keyring/wallet unlock prompt.
@@ -147,6 +147,7 @@ private:
     StatusMonitor*  m_statusMonitor  = nullptr;
     QMap<QString, QString> m_settings;   // see settings()
     int             m_configSetsInFlight = 0; // `config set` commands not yet finished
+    ConnectQueue    m_connectQueue;           // one connect or disconnect at a time, newest request wins
 
     // The settings saved in the CLI's settings.json, in fetchSettings() form.
     // Only what the user has changed is in there, so this is the fallback for
@@ -179,8 +180,20 @@ private:
     void checkNetworkReady(int retriesLeft, const std::function<void()>& onReady);
 
     // Records where a connection is going and enters Connecting, then issues
-    // it with no retries. A server name, when given, wins over country/city.
-    void beginConnect(const QString& country, const QString& city, const QString& server);
+    // it with no retries, or holds it until the connect or disconnect that is
+    // still running has finished.
+    void beginConnect(const ConnectRequest& request);
+    // Starts the connect that was held while another command ran. Returns
+    // false, doing nothing, when none was.
+    bool startHeldConnect();
+    // Records `state`, forgets the connected server unless the VPN is (still)
+    // connected, and announces the state with `info`.
+    void announceState(VpnState state, const QString& info);
+    // Has the status monitor ask the CLI again right away. Run once a connect
+    // or disconnect has finished: the poll that was in flight meanwhile may
+    // have sampled the state before the change, and would undo it on screen
+    // until the next one.
+    void refreshStatusNow();
     // The first half of that, shared with startupAutoConnect(): logs `action`
     // and the destination, records it, and enters Connecting.
     void enterConnecting(const QString& action, const QString& country, const QString& city,
@@ -188,10 +201,10 @@ private:
 
     // Runs `protonvpn connect`, retrying with backoff up to retriesLeft times
     // on failure before giving up and emitting VpnState::Error. retriesLeft=0
-    // means no retry (used by the manual connectVpn() path). A non-empty
-    // server connects to that server by name instead of country/city.
-    void issueConnect(const QString& country, const QString& city, int retriesLeft,
-                      const QString& server = QString());
+    // means no retry (used by the manual connectVpn() path). `ticket` is the
+    // request's from m_connectQueue: a result or retry of a request that is no
+    // longer the newest is dropped.
+    void issueConnect(const ConnectRequest& request, int retriesLeft, int ticket);
 
     // Background status monitor (long-lived subprocess, every 15 s while logged in).
     void startStatusMonitor();

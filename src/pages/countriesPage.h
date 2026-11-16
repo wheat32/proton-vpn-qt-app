@@ -5,7 +5,6 @@
 #include <QListWidget>
 #include <QMap>
 #include <QPushButton>
-#include <QScrollArea>
 #include <QSet>
 #include <QTimer>
 #include <QToolButton>
@@ -58,6 +57,22 @@ protected:
     bool eventFilter(QObject* obj, QEvent* event) override;
 
 private:
+    // A country's cities as the CLI lists them: (city, features).
+    using CityList = QList<QPair<QString, QString>>;
+    // The countries a search and the filters leave: (name, code).
+    using CountryList = QList<QPair<QString, QString>>;
+
+    // What the countries list holds: its loading message, the countries, or
+    // the message that they could not be loaded.
+    enum class ListState
+    {
+        Loading,
+        Ready,
+        Failed,
+    };
+
+    static constexpr int NARROW_THRESHOLD = 515;
+
     VpnManager* m_manager;
     Mode        m_mode;
     QString     m_localCountryCode;
@@ -66,15 +81,21 @@ private:
     QString     m_initialCode;
     QString     m_initialCity;
 
+    ListState m_countriesState = ListState::Loading;
     QMap<QString, QString> m_allCountries; // name -> code
-    QMap<QString, QList<QPair<QString, QString>>> m_cityCache; // code -> cities
+    QMap<QString, CityList> m_cityCache;   // code -> cities
     QSet<QString> m_pendingCityCodes;
 
+    // The one selection both layouts and both connect buttons show (see
+    // updateConnectButtons()). The city is empty for the country's fastest
+    // server.
     QString m_selectedCode;
     QString m_selectedCity;
     QString m_selectedCountry;
+    // The selected country is not listed right now (the search or the filters
+    // leave it out); it is selected again once it is.
+    bool    m_selectionHidden = false;
 
-    static constexpr int kNarrowThreshold = 515;
     bool m_narrowMode = false;
     bool m_splitView  = false; // see setSplitView()
 
@@ -105,15 +126,18 @@ private:
     ElideLabel*  m_citiesLabel   = nullptr;
     QPushButton* m_connectBtn    = nullptr;
 
-    // Narrow layout
+    // Narrow layout. m_narrowStatusLabel (the loading and failure message)
+    // lives for as long as the page does and is only shown and hidden;
+    // m_narrowLayout holds nothing but the accordion's sections, which come
+    // and go with every rebuild.
     QWidget*     m_narrowWidget      = nullptr;
-    QScrollArea* m_narrowScroll      = nullptr;
     QWidget*     m_narrowContent     = nullptr;
+    QLabel*      m_narrowStatusLabel = nullptr;
     QVBoxLayout* m_narrowLayout      = nullptr;
-    QLabel*      m_narrowLoadingLabel = nullptr;
     QPushButton* m_narrowConnectBtn  = nullptr;
 
-    struct AccordionItem {
+    struct AccordionItem
+    {
         QToolButton* headerBtn    = nullptr;
         QWidget*     citiesWidget = nullptr;
         QVBoxLayout* citiesLayout = nullptr;
@@ -130,11 +154,28 @@ private:
     void buildNarrowLayout(QVBoxLayout* parent);
     void switchLayout(bool narrow);
 
+    // Loading state. Both layouts are put into it, and taken out of it, in
+    // one place each, so neither can be left behind.
+    void showCountriesLoading();
+    void showCountriesFailed();
+    [[nodiscard]] QString loadingCountriesText() const;
+    [[nodiscard]] QString loadingCitiesText() const;
+
     void applyFilter();
     void updateBubbleStyles() const;
-    bool countryPassesFilter(const QString& code) const;
+    [[nodiscard]] bool anyFilterActive() const;
+    // The local country, listed first and marked with a star.
+    [[nodiscard]] bool isPinned(const QString& code) const;
+    [[nodiscard]] bool countryPassesFilter(const QString& code) const;
+    // The countries the search and the filters leave: the local country
+    // first, then the rest by name.
+    [[nodiscard]] CountryList matchingCountries() const;
+    // The cities the feature filters leave.
+    [[nodiscard]] CityList filteredCities(const CityList& cities) const;
+    // Follows port forwarding, which needs P2P servers (see the .cpp).
+    void onSettingsRead(const QMap<QString, QString>& settings);
 
-    void populateWide() const;
+    void populateWide(const CountryList& countries) const;
     // Shows the countries as a grid of cards in the split view, as a list
     // otherwise; see the .cpp.
     void updateCountriesListMode() const;
@@ -145,14 +186,29 @@ private:
     // Redraws the accordion's arrows, which follow the theme (as do the
     // filter bubbles, see bubbleStyle()).
     void refreshAccordionIcons() const;
-    void populateNarrow();
+    void populateNarrow(const CountryList& countries);
+    // Takes every section out of the accordion.
+    void clearAccordion();
 
+    // The wide cities pane. Emptying it also stops its loading spinner, so
+    // the spinner never writes over a row that is not its own.
+    void clearWideCities() const;
+    // Shows the selected country's cities, fetching them when needed.
+    void showWideCities();
+    void fillWideCities(const CityList& cities);
     void addWideCityItem(const QString& city, const QString& features) const;
+
+    // An accordion section's rows: the cached cities the filters leave, or a
+    // single message.
+    void fillAccordionCities(const QString& code);
+    void showAccordionMessage(const QString& code, const QString& text);
     void addNarrowCityItem(QVBoxLayout* layout, const QString& city,
                            const QString& features, const QString& code);
 
     void onCountriesReady(const QMap<QString, QString>& countries);
-    void onCitiesReady(const QString& code, const QList<QPair<QString, QString>>& cities);
+    void onCountriesFetchFailed();
+    void onCitiesReady(const QString& code, const CityList& cities);
+    void onCitiesFetchFailed(const QString& code);
 
     void onWideCountrySelected(const QListWidgetItem* item);
     void onWideCitySelected(const QListWidgetItem* item);
@@ -160,9 +216,18 @@ private:
     void toggleAccordion(const QString& code);
     void ensureCities(const QString& code);
 
-    // Updates both connect buttons to show a lock when the account is Free,
-    // or restores normal styling for paid accounts.
-    void updateConnectBtnLockState() const;
+    // Whether this account may pick a location to connect to. Picking one in
+    // choose mode connects to nothing, so that is for any account.
+    [[nodiscard]] bool isLocked() const;
+    [[nodiscard]] QString lockedTooltip() const;
+    // Shows the selection on both connect buttons, the one in the layout on
+    // screen and the one that is not: their text, whether they can be
+    // clicked, and for a Free account the lock in place of both.
+    void updateConnectButtons() const;
+    // An accordion row's button, which a Free account cannot use either.
+    void updateRowButtonLock(QPushButton* button) const;
+    // What both connect buttons do: the selection they show.
+    void onConnectClicked();
 
     // Connects to the location, or in choose mode picks it.
     void requestLocation(const QString& countryCode, const QString& city);

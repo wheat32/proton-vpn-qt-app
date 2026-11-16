@@ -1,18 +1,15 @@
 #include "debugPage.h"
 
 #include "../appConfig.h"
+#include "../appVersion.h"
 #include "../dialogs/errorDetailsDialog.h"
 #include "../dialogs/updateAvailableDialog.h"
 #include "../dialogs/whatsNewDialog.h"
 #include "../migrations.h"
 
-#include <QFile>
 #include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
-// ReSharper disable once CppUnusedIncludeDirective
-#include <QJsonDocument> // Ignore unused include warning; we do use QJsonDocument
-#include <QJsonObject>
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
@@ -35,9 +32,27 @@ constexpr int KEY_LABEL_MIN_WIDTH       = 180;
 constexpr int RESET_BTN_WIDTH           = 64;
 constexpr int DEFAULT_RECENT_COUNT      = 5;
 constexpr int VALUE_COL_STRETCH         = 1;
+// Columns of the per-key settings grid; the key label is in column 0.
+constexpr int GRID_VALUE_COL            = 1;
+constexpr int GRID_RESET_COL            = 2;
+// A description takes the width its row's button leaves over.
+constexpr int DESC_STRETCH              = 1;
 constexpr int MIGRATION_VERSION_WIDTH   = 90;
 constexpr int MIGRATION_BTN_WIDTH       = 80;
 constexpr int SIGNIN_SCREEN_COLUMNS     = 2;
+// The overflow test's error text: this many numbered lines between two very
+// long ones.
+constexpr int ERROR_BODY_LINES          = 38;
+constexpr int ERROR_LONG_LINES          = 2;
+// Shown where the app's version cannot be read from version.json.
+const QString UNKNOWN_VERSION = QStringLiteral("?.?.?");
+
+// The app's version for the dialog tests.
+QString appVersionOrPlaceholder()
+{
+    const QString version = AppVersion::embedded().appVersion;
+    return version.isEmpty() == true ? UNKNOWN_VERSION : version;
+}
 
 QLabel* makeSectionHeader(const QString& text, QWidget* parent)
 {
@@ -122,15 +137,7 @@ DebugPage::DebugPage(QWidget* parent)
     whatsNewBtn->setCursor(Qt::PointingHandCursor);
     connect(whatsNewBtn, &QPushButton::clicked, this, [this]()
     {
-        QString version = QStringLiteral("?.?.?");
-        QFile vf(QStringLiteral(":/version.json"));
-        if (vf.open(QIODevice::ReadOnly))
-        {
-            const QJsonObject obj = QJsonDocument::fromJson(vf.readAll()).object();
-            vf.close();
-            version = obj.value(QStringLiteral("app_version")).toString(version);
-        }
-        WhatsNewDialog* dlg = new WhatsNewDialog(version, this);
+        WhatsNewDialog* dlg = new WhatsNewDialog(appVersionOrPlaceholder(), this);
         dlg->setModal(true);
         dlg->show();
     });
@@ -144,14 +151,13 @@ DebugPage::DebugPage(QWidget* parent)
         // Long text designed to stress both vertical (many lines) and horizontal
         // (very long single line) overflow handling in the dialog.
         const QString loremLine = tr(
-            "This is a very long error line intended to trigger horizontal scrollbar / wrapping behaviour "
+            "This is a very long error line intended to trigger horizontal scrollbar / wrapping behavior "
             "inside the ErrorDetailsDialog; it just keeps going and going without any newline break whatsoever. "
             "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore "
             "et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi.");
 
-        constexpr int ERROR_BODY_LINES = 38;
         QStringList lines;
-        lines.reserve(ERROR_BODY_LINES + 2);
+        lines.reserve(ERROR_BODY_LINES + ERROR_LONG_LINES);
         lines << loremLine;  // first line: horizontal overflow
         for (int i = 1; i <= ERROR_BODY_LINES; ++i)
         {
@@ -170,15 +176,8 @@ DebugPage::DebugPage(QWidget* parent)
     updateDialogBtn->setCursor(Qt::PointingHandCursor);
     connect(updateDialogBtn, &QPushButton::clicked, this, [this]()
     {
-        QString currentVersion = QStringLiteral("?.?.?");
-        QFile vf(QStringLiteral(":/version.json"));
-        if (vf.open(QIODevice::ReadOnly))
-        {
-            const QJsonObject obj = QJsonDocument::fromJson(vf.readAll()).object();
-            vf.close();
-            currentVersion = obj.value(QStringLiteral("app_version")).toString(currentVersion);
-        }
-        UpdateAvailableDialog* dlg = new UpdateAvailableDialog(currentVersion, QStringLiteral("99.0.0"), this);
+        UpdateAvailableDialog* dlg =
+            new UpdateAvailableDialog(appVersionOrPlaceholder(), QStringLiteral("99.0.0"), this);
         dlg->setModal(true);
         dlg->show();
     });
@@ -332,7 +331,7 @@ DebugPage::DebugPage(QWidget* parent)
         content);
     clearDesc->setWordWrap(true);
     clearDesc->setObjectName(QStringLiteral("settingsDesc"));
-    clearRow->addWidget(clearDesc, 1);
+    clearRow->addWidget(clearDesc, DESC_STRETCH);
 
     QPushButton* clearAllBtn = new QPushButton(tr("Clear All Settings"), content);
     clearAllBtn->setObjectName(QStringLiteral("dangerButton"));
@@ -362,7 +361,7 @@ DebugPage::DebugPage(QWidget* parent)
     grid->setContentsMargins(0, GRID_V_MARGIN, 0, GRID_V_MARGIN);
     grid->setHorizontalSpacing(GRID_H_SPACING);
     grid->setVerticalSpacing(GRID_V_SPACING);
-    grid->setColumnStretch(1, VALUE_COL_STRETCH); // value column stretches
+    grid->setColumnStretch(GRID_VALUE_COL, VALUE_COL_STRETCH); // value column stretches
 
     // Appends one row, wires the Reset button via onReset, and returns
     // the value label so the caller can update it in refreshValues().
@@ -393,8 +392,8 @@ DebugPage::DebugPage(QWidget* parent)
         });
 
         grid->addWidget(keyLbl,   row, 0);
-        grid->addWidget(valLbl,   row, 1);
-        grid->addWidget(resetBtn, row, 2);
+        grid->addWidget(valLbl,   row, GRID_VALUE_COL);
+        grid->addWidget(resetBtn, row, GRID_RESET_COL);
         ++row;
 
         return valLbl;
@@ -502,7 +501,7 @@ DebugPage::DebugPage(QWidget* parent)
         QLabel* lbl = new QLabel(
             QStringLiteral("<code>%1</code>").arg(name.toHtmlEscaped()), content);
         lbl->setTextFormat(Qt::RichText);
-        row->addWidget(lbl, 1);
+        row->addWidget(lbl, DESC_STRETCH);
 
         QPushButton* btn = new QPushButton(tr("Run Test"), content);
         btn->setObjectName(QStringLiteral("secondaryButton"));
@@ -525,6 +524,11 @@ DebugPage::DebugPage(QWidget* parent)
             return Migrations::testMigrateSystemdToXdgAutostart(
                 m_migrationVersionInput->text().trimmed());
         });
+
+    // Keyed on the legacy file existing, not on the simulated version.
+    addMigrationRow(
+        QStringLiteral("moveLegacyFlatpakAutostart"),
+        &Migrations::testMoveLegacyFlatpakAutostart);
 #endif // QT_DEBUG
 
     layout->addStretch();
@@ -554,7 +558,7 @@ void DebugPage::refreshValues() const
 
 void DebugPage::setLeftPadding(int px)
 {
-    auto m = m_outerLayout->contentsMargins();
+    QMargins m = m_outerLayout->contentsMargins();
     m.setLeft(px);
     m_outerLayout->setContentsMargins(m);
 }

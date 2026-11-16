@@ -3,8 +3,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QStandardPaths>
-// ReSharper disable once CppUnusedIncludeDirective
-#include <ranges>
+#include <algorithm>
+#include <iterator>
 #include "appConfig.h"
 #include "connectionHistory.h"
 #include "jsonFile.h"
@@ -37,9 +37,13 @@ QList<ConnectionEntry> ConnectionHistory::entries() const
 {
     const int maxCount = AppConfig::instance().recentConnectionsCount();
     if (maxCount == 0)
+    {
         return {};
+    }
     if (m_entries.size() <= maxCount)
+    {
         return m_entries;
+    }
     return m_entries.sliced(0, maxCount);
 }
 
@@ -50,8 +54,7 @@ void ConnectionHistory::record(const QString& countryCode,
     const int maxCount = AppConfig::instance().recentConnectionsCount();
 
     // 0 means the feature is disabled - don't store anything.
-    if (maxCount == 0)
-        return;
+    if (maxCount == 0) return;
 
     // If already present, update timestamp and move to front
     const auto it = std::ranges::find_if(m_entries,
@@ -122,14 +125,13 @@ void ConnectionHistory::trimToCount(const int newMax)
 void ConnectionHistory::load()
 {
     QFile f(historyFilePath());
-    if (f.open(QIODevice::ReadOnly) == false)
-        return;
+    if (f.open(QIODevice::ReadOnly) == false) return;
 
     const QJsonArray arr = QJsonDocument::fromJson(f.readAll()).array();
     f.close();
 
     m_entries.clear();
-    for (const auto& val : arr)
+    for (const QJsonValue& val : arr)
     {
         const QJsonObject obj = val.toObject();
         ConnectionEntry e;
@@ -148,7 +150,7 @@ void ConnectionHistory::load()
 void ConnectionHistory::save() const
 {
     QJsonArray arr;
-    for (const auto& e : m_entries)
+    for (const ConnectionEntry& e : m_entries)
     {
         QJsonObject obj;
         obj[QStringLiteral("country_code")]  = e.countryCode;

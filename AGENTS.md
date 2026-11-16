@@ -14,7 +14,8 @@ MainWindow (QStackedWidget)
 **Key data flows:**
 - UI → `VpnManager` → `protonvpn <cmd>` subprocess → signals back to UI
 - `StatusMonitor` parses `Key: Value` lines from `protonvpn status` and emits `statusParsed(QMap<QString,QString>)`
-- `VpnManager::applyStatusFields()` translates the map into `VpnState` enum changes and emits `connectionStateChanged`
+- `VpnManager::applyStatusFields()` translates the map into `VpnState` enum changes (by the rules in `cli/statusSnapshot.h`) and emits `connectionStateChanged`
+- Connect and disconnect requests go through `VpnManager`'s `ConnectQueue`; state changes are announced with `VpnManager::announceState()`, never by setting `m_state` directly
 
 ## Build & Run
 
@@ -56,6 +57,12 @@ This transparently wraps commands with `flatpak-spawn --host` when inside a Flat
 | `cli/protonvpncli.cpp` | CLI command builder helpers |
 | `cli/signin/` | The `protonvpn signin` conversation, one `SigninFlow` per CLI version range (`SigninFlows::forCliVersion()` picks it); flows only read output and return effects, so they are unit-tested with the CLI's exact output |
 | `cli/cliVersion.h` | Reads the CLI version from the banner `protonvpn` prints without a command |
+| `cli/statusSnapshot.h` | Pure rules for what a `protonvpn status` poll changes (state, connected server, what is announced); `VpnManager::applyStatusFields()` only carries them out |
+| `cli/connectQueue.h` | Keeps connects in order: one CLI connect/disconnect at a time, the newest request wins, older waiting ones (startup auto-connect) are dropped |
+| `cli/cliInstallCheck.h`, `cli/cliDisconnect.h` | Pure readers of `protonvpn --help` (is the CLI there?) and `protonvpn disconnect` (did it happen?) output |
+| `cli/platformUtils.h` | Packaging-dependent paths and commands: autostart entry location and `Exec=`, single-instance lock path |
+| `vpnState.h` | The `VpnState` enum, on its own so pure helpers and their tests need no `VpnManager` |
+| `appVersion.h` | `AppVersion::embedded()`: the one reader of `:/version.json` |
 | `appconfig.h/cpp` | App preferences → `~/.config/ProtonVPN-Qt/app.json` |
 | `connectionhistory.h/cpp` | Recent connections → `$XDG_DATA_HOME/ProtonVPN-Qt/history.json` |
 | `main.cpp` | Palette, style, single-instance lock, version from `version.json` |

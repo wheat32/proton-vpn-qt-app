@@ -26,6 +26,8 @@ add_qt_test(tst_geoUtils
     # Assets are compiled in so the svgPixmap tests render a real SVG; without
     # them every pixmap would come back blank and the checks would be vacuous.
     ../resources.qrc
+    # The flags too: a country code the app hands out must have one.
+    ../flags.qrc
 )
 target_link_libraries(tst_geoUtils Qt6::Gui Qt6::Svg Qt6::SvgWidgets)
 
@@ -220,3 +222,65 @@ add_qt_test(tst_hintBubble
     ../widgets/hintBubble.cpp
 )
 target_link_libraries(tst_hintBubble Qt6::Widgets)
+
+#  StatusSnapshot (header-only: what a status poll changes)
+add_qt_test(tst_statusSnapshot
+    tst_statusSnapshot.cpp
+    ../cli/statusSnapshot.h
+    ../vpnState.h
+)
+
+#  CliInstallCheck (header-only)
+add_qt_test(tst_cliInstallCheck
+    tst_cliInstallCheck.cpp
+    ../cli/cliInstallCheck.h
+)
+
+#  CliDisconnect (header-only)
+add_qt_test(tst_cliDisconnect
+    tst_cliDisconnect.cpp
+    ../cli/cliDisconnect.h
+)
+
+#  ConnectQueue (header-only)
+add_qt_test(tst_connectQueue
+    tst_connectQueue.cpp
+    ../cli/connectQueue.h
+)
+
+#  AppVersion (header-only; the real version.json is embedded for embedded())
+add_qt_test(tst_appVersion
+    tst_appVersion.cpp
+    ../appVersion.h
+    version.qrc
+)
+
+#  Migrations (the file steps, against a scratch directory)
+add_qt_test(tst_migrations
+    tst_migrations.cpp
+    ../migrations.h
+    ../migrations.cpp
+    ../cli/platformUtils.h
+    ../fileLogger.h
+    ../fileLogger.cpp
+)
+
+#  ServerFilters (header-only: the Countries page's filter rules)
+add_qt_test(tst_serverFilters
+    tst_serverFilters.cpp
+    ../cli/serverFilters.h
+    ../uiHelpers.h
+)
+
+#  CliErrorSummary (header-only)
+add_qt_test(tst_cliErrorSummary
+    tst_cliErrorSummary.cpp
+    ../cli/cliErrorSummary.h
+)
+
+#  NumberSpinner (header-only; only its typed-value rule is tested)
+add_qt_test(tst_numberSpinner
+    tst_numberSpinner.cpp
+    ../widgets/numberSpinner.h
+)
+target_link_libraries(tst_numberSpinner Qt6::Widgets Qt6::Svg)

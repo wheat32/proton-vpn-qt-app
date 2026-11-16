@@ -32,6 +32,11 @@ public:
     // timer is also cancelled.
     void stop();
 
+    // Drops the poll that is in flight and starts over with a fresh one,
+    // right away instead of at the next interval. Does nothing when the
+    // monitor was never started or has been stopped.
+    void restart();
+
     bool isRunning() const;
 
     //  Shared parsing helpers
@@ -53,8 +58,9 @@ public:
     // `protonvpn connect` takes it to connect to that exact server.
     static QString parseServerName(const QString& server);
 
-    // The country code the server name starts with ("US" from "US-NJ#203",
-    // "DE" from "DE#42"). Empty when the name has no such prefix.
+    // The server's country code: the one its name starts with ("US" from
+    // "US-NJ#203", "DE" from "DE#42"), or for a Secure Core server the exit
+    // country ("US" from "CH-US#1"). Empty when the name has no such prefix.
     static QString parseCountryFromServer(const QString& server);
 
 signals:

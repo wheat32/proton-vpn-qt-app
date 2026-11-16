@@ -8,8 +8,6 @@
 #include <QTimer>
 #include <QPropertyAnimation>
 #include <QScrollArea>
-#include <QVersionNumber>
-#include <QGraphicsDropShadowEffect>
 #include "../vpnManager.h"
 #include "../cli/natpmpManager.h"
 #include "../widgets/pickerBase.h"
@@ -20,7 +18,6 @@
 #include "../widgets/globeWidget.h"
 #include "../widgets/hintBubble.h"
 #include <QGridLayout>
-#include "../dialogs/errorDetailsDialog.h"
 #include "../widgets/quickSettingsPanel.h"
 
 // ---------------------------------------------------------------------------
@@ -77,6 +74,9 @@ class LocationPicker : public PickerBase
 public:
     explicit LocationPicker(const QString& countryCode, const QString& countryName, QWidget* parent = nullptr);
 
+    // Fills the list. A city the user had selected stays selected when it is
+    // still in `cities`; otherwise the selection goes back to the fastest
+    // server.
     void populate(const QList<QPair<QString, QString>>& cities);
     void setLoading(bool loading);
     void setSelectedCity(const QString& city);
@@ -103,6 +103,11 @@ protected:
 
 private:
     void updateHeader() const;
+    // The row holding `city` (the fastest server's for an empty one), or
+    // NO_ROW when the list has none.
+    [[nodiscard]] int rowForCity(const QString& city) const;
+
+    static constexpr int NO_ROW = -1;
 
     QString m_countryCode;
     QString m_countryName;
@@ -116,9 +121,34 @@ private:
 };
 
 // ---------------------------------------------------------------------------
+// SavedConnectionPicker – what the recent and favorites pickers share: rows
+// that each stand for a saved connection (a country, with a city or with none
+// for its fastest server), and what happens when one is chosen.
+// ---------------------------------------------------------------------------
+class SavedConnectionPicker : public PickerBase
+{
+    Q_OBJECT
+public:
+    explicit SavedConnectionPicker(QWidget* parent = nullptr);
+
+signals:
+    void connectionSelected(const QString& countryCode, const QString& city);
+
+protected:
+    // Appends the row for one saved connection. An empty `dateText` leaves
+    // the date column out.
+    void addConnectionRow(const QString& countryCode, const QString& countryName, const QString& city,
+                          const QString& dateText, bool withStar);
+
+    bool eventFilter(QObject* obj, QEvent* ev) override;
+    void onRowClicked(QListWidgetItem* item) override;
+    [[nodiscard]] RowLocation rowLocation(const QListWidgetItem* item) const override;
+};
+
+// ---------------------------------------------------------------------------
 // RecentPicker – shows recent connections as a dropdown
 // ---------------------------------------------------------------------------
-class RecentPicker : public PickerBase
+class RecentPicker : public SavedConnectionPicker
 {
     Q_OBJECT
 public:
@@ -127,19 +157,20 @@ public:
     // Reload from ConnectionHistory and rebuild popup list.
     void refresh();
 
-signals:
-    void connectionSelected(const QString& countryCode, const QString& city);
-
 protected:
-    bool eventFilter(QObject* obj, QEvent* ev) override;
-    void onRowClicked(QListWidgetItem* item) override;
-    [[nodiscard]] RowLocation rowLocation(const QListWidgetItem* item) const override;
+    void changeEvent(QEvent* event) override;
+
+private:
+    // Draws the header's clock in the theme's icon color.
+    void updateClockIcon();
+
+    QLabel* m_clockIcon = nullptr;
 };
 
 // ---------------------------------------------------------------------------
 // FavoritesPicker – shows favorited connections as a dropdown
 // ---------------------------------------------------------------------------
-class FavoritesPicker : public PickerBase
+class FavoritesPicker : public SavedConnectionPicker
 {
     Q_OBJECT
 public:
@@ -147,14 +178,6 @@ public:
 
     // Reload from FavoritesManager and rebuild popup list.
     void refresh();
-
-signals:
-    void connectionSelected(const QString& countryCode, const QString& city);
-
-protected:
-    bool eventFilter(QObject* obj, QEvent* ev) override;
-    void onRowClicked(QListWidgetItem* item) override;
-    [[nodiscard]] RowLocation rowLocation(const QListWidgetItem* item) const override;
 };
 
 
@@ -182,7 +205,11 @@ public:
     // Points out the power button with a tip, unless one was dismissed before
     // (see AppConfig::powerButtonHintShown()).
     void showPowerButtonHint();
-    void notifyExternalConnect(const QString& city);
+    // A connection to `city` of `countryCode` (the country's fastest server
+    // for an empty city) was asked for outside this page, from the Countries
+    // list. The Selected Location dropdown follows it only when that is the
+    // local country: it lists no other country's cities.
+    void notifyExternalConnect(const QString& countryCode, const QString& city);
     void refreshRecentPicker() const;
     // Adds a dismissable warning to the warnings area, which counts it and
     // clears it with the rest. Returns the banner, which deletes itself once
@@ -195,7 +222,8 @@ public:
     void setLocationPickerVisible(bool visible);
     // Shows or hides the favorites picker (respects hasFavorites + setting).
     void setFavoritesDropdownVisible(bool visible);
-    // Called when the favorites-enabled setting changes.
+    // Called when the favorites-enabled setting changes: favorites off hides
+    // their dropdown too.
     void setFavoritesEnabled(bool enabled);
     // The settings the quick settings panel can show: the Settings page's.
     void setQuickSettingSources(const QList<QuickSettingSource>& sources);
@@ -258,8 +286,9 @@ private:
     QVBoxLayout*      m_topLayout            = nullptr;
     QWidget*          m_topContentWidget     = nullptr;
     QScrollArea*      m_scrollArea           = nullptr;
-    // Narrow-mode scroll offset wrapper - carries the kCollapsedW left margin so
-    // only the scroll area is pushed right (logo/power remain full-width centered).
+    // Narrow-mode scroll offset wrapper - carries the collapsed drawer's width
+    // as a left margin so only the scroll area is pushed right (logo/power
+    // remain full-width centered).
     QWidget*          m_scrollOffsetWidget   = nullptr;
     QVBoxLayout*      m_scrollOffsetLayout   = nullptr;
     QWidget*          m_narrowContent        = nullptr;
@@ -277,10 +306,14 @@ private:
     bool              m_wideMode             = false;
     bool              m_splitView            = false; // see setSplitView()
 
-    static constexpr int kWideThreshold = 700;
-    static constexpr int kWideSidebarW  = 300;
+    // The main column's width from which the dropdowns sit expanded beside the
+    // content, and the width of the sidebar they sit in.
+    static constexpr int WIDE_THRESHOLD     = 700;
+    static constexpr int WIDE_SIDEBAR_WIDTH = 300;
     bool            m_showFavoritesDropdown = true; // cached from AppConfig
-    // Container that holds all warning banners (prerelease, Flatpak, AppImage).
+    bool            m_favoritesEnabled      = true; // cached from AppConfig
+    // Container that holds the warning banners added with addWarning() (the
+    // pre-release one and whatever MainWindow adds).
     // Moved between the scroll layout and the picker sidebar when switching modes.
     QWidget*      m_vpnBannerArea        = nullptr;
     QWidget*      m_vpnBannerContent     = nullptr;  // direct child in narrow, scroll child in wide
@@ -311,17 +344,26 @@ private:
 
     VpnState m_currentState = VpnState::Unknown;
     QString  m_activeCity;
-    QString  m_connectedCountryCode; // country code of the currently connected server (e.g. "US")
-    QString  m_pendingStatusCity; // city from protonvpn status, applied after cities populate
+    // Country code of the connected server (e.g. "US") as `protonvpn status`
+    // reported it; empty until it does, and again once a new connection
+    // starts or the connection ends. See connectionCountry().
+    QString  m_connectedCountryCode;
+    // City from `protonvpn status`, for the Selected Location dropdown. Held
+    // only until the state change that follows it, or until the cities list
+    // has loaded; never past the connection it was reported for.
+    QString  m_pendingStatusCity;
     QString  m_currentCityFeatures; // features string (e.g. "P2P") for the currently active city
+    // The country and city m_currentCityFeatures was last asked for, so the
+    // same server is not looked up twice (see fetchConnectedCityFeatures()).
+    QString  m_cityFeaturesRequest;
     QString  m_lastConnectedInfo;   // base info text from the last Connected state change
     bool     m_hadUnknownConnection = false;
     bool     m_stateKnown = false;
     // nullopt = citiesReady has not yet fired for the local country;
     // empty list = fired but the CLI returned no cities.
     std::optional<QList<QPair<QString, QString>>> m_pendingCities;
-
-    // kWideThreshold removed; threshold is now computed dynamically in relayoutPickers()
+    // Set once the Selected Location dropdown has its cities.
+    bool     m_citiesPopulated = false;
 
     // Constructor helpers - each builds one self-contained part of the page.
     void buildPortRow(QWidget* parent, QVBoxLayout* layout);
@@ -332,7 +374,7 @@ private:
     void startElapsedTimer();
     void stopElapsedTimer() const;
     void showErrorDetails();
-    void relayoutPickers(int width = 0) const; // delegates to drawer syncVisibility
+    void relayoutPickers() const; // delegates to drawer syncVisibility
     // The page's width less the quick settings panel, when it is shown. The
     // narrow and wide modes and the content scale go by this width.
     [[nodiscard]] int mainWidth() const;
@@ -352,11 +394,8 @@ private:
     void updateContentScale();
     qreal m_contentScale = 1.0;
 
-    // Background globe and the country it should face (see updateGlobeTarget()).
+    // Background globe; it faces connectionCountry() (see updateGlobeTarget()).
     GlobeWidget* m_globe = nullptr;
-    // Country of the current connection as reported by `protonvpn status`;
-    // cleared when a new connection starts or the connection ends.
-    QString m_globeStatusCountry;
     void updateGlobeTarget();
     void syncInfoBackdrop() const;
     // Chooses between the narrow layout and the two wide arrangements: the
@@ -381,6 +420,35 @@ private:
     void showNatpmpcBanner();
     void dismissNatpmpcBanner();
     void refreshConnectedInfoLabel() const;
-    // After populate(), try to select m_pendingStatusCity; falls back to
+    // Selects m_pendingStatusCity in the Selected Location dropdown once its
+    // cities have loaded, if the connection is in the local country and the
+    // city is listed; the dropdown is left as it is otherwise.
     void applyPendingStatusCity();
+    // Populates the Selected Location dropdown and applies what was waiting
+    // for its cities.
+    void populateLocationPicker(const QList<QPair<QString, QString>>& cities);
+    // Whether `countryCode` is the country the Selected Location dropdown
+    // lists. False for every code when no local country was detected.
+    [[nodiscard]] bool isLocalCountry(const QString& countryCode) const;
+    // The country of the connection being made or in use: the one `protonvpn
+    // status` reported, or until it has, the one that was asked for. Empty
+    // when neither is known (the fastest server anywhere, before the first
+    // status).
+    [[nodiscard]] QString connectionCountry() const;
+    // Forgets what `protonvpn status` said about a connection that has ended
+    // or is being replaced.
+    void forgetStatusLocation();
+    // A dropdown row for a recent or favorite connection was chosen.
+    void onSavedConnectionSelected(const QString& countryCode, const QString& city);
+    // The Selected Location dropdown's selection changed while a connection
+    // is up or being made.
+    void onLocationSelectionChanged(const QString& city);
+    // Asks whether to switch the connection to `locationName` now. With
+    // `canDefer` the other choice is to keep the selection for the next
+    // reconnect; without it, to leave the connection as it is. Returns true
+    // for connecting now.
+    [[nodiscard]] bool confirmLocationChange(const QString& locationName, bool canDefer);
+    // Looks up whether the connected city's servers are P2P ones, for the
+    // port forwarding note, once the connection's country and city are known.
+    void fetchConnectedCityFeatures();
 };

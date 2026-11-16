@@ -12,9 +12,16 @@
 namespace GeoUtils
 {
     // Detect the user's country via system timezone then locale territory.
-    // Returns a 2-letter uppercase ISO 3166-1 alpha-2 code (e.g. "US", "DE"),
-    // or an empty string if detection fails.
+    // Returns the 2-letter uppercase code Proton VPN uses for it (e.g. "US",
+    // "DE", and "UK" rather than "GB": see protonCountryCode()), or an empty
+    // string if detection fails.
     QString detectUserCountry();
+
+    // The code Proton VPN uses for the country with ISO 3166-1 alpha-2 code
+    // `isoCode`. They are the same but for the United Kingdom, which Proton
+    // calls "UK": the CLI rejects "GB" as an invalid country code, and its
+    // server list names the country "UK". Any other code is returned as given.
+    QString protonCountryCode(const QString& isoCode);
 
     // Convert a 2-letter country code to its English display name
     // (e.g. "US" -> "United States").  Returns the code itself if unknown.

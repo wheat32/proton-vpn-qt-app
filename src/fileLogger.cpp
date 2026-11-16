@@ -60,8 +60,7 @@ FileLogger::~FileLogger()
 
 void FileLogger::setEnabled(const bool enabled)
 {
-    if (m_enabled == enabled)
-        return;
+    if (m_enabled == enabled) return;
 
     m_enabled = enabled;
     if (m_enabled)
@@ -76,8 +75,7 @@ void FileLogger::setEnabled(const bool enabled)
 
 void FileLogger::write(const QString& line) const
 {
-    if (m_enabled == false || m_file == nullptr)
-        return;
+    if (m_enabled == false || m_file == nullptr) return;
 
     QTextStream stream(m_file);
     stream << line << '\n';
@@ -88,16 +86,14 @@ void FileLogger::write(const QString& line) const
 
 void FileLogger::trimIfNeeded() const
 {
-    if (m_file == nullptr || m_file->size() <= MAX_LOG_FILE_SIZE_BYTES)
-        return;
+    if (m_file == nullptr || m_file->size() <= MAX_LOG_FILE_SIZE_BYTES) return;
 
     const QString path = m_file->fileName();
 
     // Read the kept tail via a separate handle so m_file's own state isn't
     // disturbed until we are ready to truncate and rewrite it.
     QFile reader(path);
-    if (reader.open(QIODevice::ReadOnly) == false)
-        return;
+    if (reader.open(QIODevice::ReadOnly) == false) return;
 
     reader.seek(reader.size() - LOG_TRIM_TARGET_BYTES);
     QByteArray tail = reader.readAll();
@@ -112,8 +108,7 @@ void FileLogger::trimIfNeeded() const
     }
 
     m_file->close();
-    if (m_file->open(QIODevice::WriteOnly | QIODevice::Text) == false)
-        return;
+    if (m_file->open(QIODevice::WriteOnly | QIODevice::Text) == false) return;
     m_file->write(tail);
     m_file->flush();
 }
@@ -124,8 +119,7 @@ void FileLogger::openNewLogFile()
 
     const QString dirPath = logDir();
     const QDir dir;
-    if (dir.mkpath(dirPath) == false)
-        return;
+    if (dir.mkpath(dirPath) == false) return;
 
     const QDir logDirObj(dirPath);
     const QFileInfoList entries = logDirObj.entryInfoList(
@@ -161,8 +155,7 @@ void FileLogger::openNewLogFile()
     // a rename never clobbers a file still waiting to be shifted.
     for (int n = MAX_ROTATED_LOGS - 1; n >= 1; --n)
     {
-        if (rotated.contains(n) == false)
-            continue;
+        if (rotated.contains(n) == false) continue;
         const QString& oldPath = rotated[n];
         QString base = oldPath;
         base.chop(QStringLiteral("-%1.log").arg(n).size());

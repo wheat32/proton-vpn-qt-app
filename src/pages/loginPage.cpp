@@ -1,14 +1,11 @@
 #include "loginPage.h"
+#include "../appVersion.h"
 #include "../geoUtils.h"
 #include "../widgets/stackPage.h"
 #include "../widgets/svgBanner.h"
 
-#include <QFile>
 #include <QFrame>
 #include <QHBoxLayout>
-// ReSharper disable once CppUnusedIncludeDirective
-#include <QJsonDocument> // Ignore unused include warning; we do use QJsonDocument
-#include <QJsonObject>
 #include <QLabel>
 #include <QPixmap>
 #include <QVersionNumber>
@@ -205,8 +202,10 @@ void LoginPage::buildCredsWidget()
         emit loginRequested(m_usernameEdit->text().trimmed(), m_passwordEdit->text());
     });
     connect(m_passwordEdit, &QLineEdit::returnPressed, m_loginBtn, &QPushButton::click);
-    connect(m_usernameEdit, &QLineEdit::returnPressed, m_passwordEdit,
-            [this](){ m_passwordEdit->setFocus(); });
+    connect(m_usernameEdit, &QLineEdit::returnPressed, m_passwordEdit, [this]()
+    {
+        m_passwordEdit->setFocus();
+    });
 
     // Both fields are required; submitting an empty form only produced a CLI
     // error round-trip.
@@ -439,9 +438,13 @@ void LoginPage::showCodePrompt() const
 {
     setError(QString());
     m_tfaEdit->clear();
+    // Everything setLoading() disables while a code is checked. A rejected
+    // code comes back as this prompt, not as loginFinished, so nothing else
+    // would enable Go Back again.
     m_tfaSubmitBtn->setEnabled(true);
     m_tfaSubmitBtn->setText(tr("Verify"));
     m_tfaEdit->setEnabled(true);
+    m_tfaCancelBtn->setEnabled(true);
     m_stack->setCurrentIndex(STACK_INDEX_TFA);
     m_tfaEdit->setFocus();
 }
@@ -546,22 +549,17 @@ void LoginPage::togglePasswordVisibility() const
 
 void LoginPage::checkPrereleaseBanner()
 {
-    QFile vf(QStringLiteral(":/version.json"));
-    if (vf.open(QIODevice::ReadOnly) == false) return;
+    const AppVersion::Info& version = AppVersion::embedded();
+    if (version.prerelease == false) return;
 
-    const QJsonObject obj = QJsonDocument::fromJson(vf.readAll()).object();
-    vf.close();
-
-    if (obj.value(QStringLiteral("prerelease")).toBool(false) == false) return;
-
-    const QString appVersion = obj.value(QStringLiteral("app_version")).toString();
     const QString msg = tr(
         "You are running a <b>pre-release</b> version of this app (<b>v%1</b>). "
         "It may contain bugs or incomplete features. Use with caution.")
-        .arg(appVersion.toHtmlEscaped());
+        .arg(version.appVersion.toHtmlEscaped());
 
     m_prereleaseBanner = new InfoBanner(msg, this);
-    connect(m_prereleaseBanner, &InfoBanner::dismissed, this, [this]() {
+    connect(m_prereleaseBanner, &InfoBanner::dismissed, this, [this]()
+    {
         m_prereleaseBanner = nullptr;
     });
     m_bannerLayout->addWidget(m_prereleaseBanner);
@@ -570,16 +568,8 @@ void LoginPage::checkPrereleaseBanner()
 
 void LoginPage::onCliVersionReady(const QString& version)
 {
-    QString cliVersionMin;
-    QString cliVersionMax;
-    QFile vf(QStringLiteral(":/version.json"));
-    if (vf.open(QIODevice::ReadOnly))
-    {
-        const QJsonObject obj = QJsonDocument::fromJson(vf.readAll()).object();
-        vf.close();
-        cliVersionMin = obj.value(QStringLiteral("cli_version_tested_min")).toString();
-        cliVersionMax = obj.value(QStringLiteral("cli_version_tested_max")).toString();
-    }
+    const QString cliVersionMin = AppVersion::embedded().cliTestedMin;
+    const QString cliVersionMax = AppVersion::embedded().cliTestedMax;
 
     if (version.isEmpty() || (cliVersionMin.isEmpty() && cliVersionMax.isEmpty())) return;
 
@@ -611,7 +601,8 @@ void LoginPage::onCliVersionReady(const QString& version)
               .arg(version, rangeStr, WORKAROUND_MSG);
 
     m_versionBanner = new InfoBanner(msg, this);
-    connect(m_versionBanner, &InfoBanner::dismissed, this, [this]() {
+    connect(m_versionBanner, &InfoBanner::dismissed, this, [this]()
+    {
         m_versionBanner = nullptr;
     });
     m_outerLayout->addWidget(m_versionBanner);

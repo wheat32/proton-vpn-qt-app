@@ -11,12 +11,12 @@
 #include <utility>
 #include "../vpnManager.h"
 #include "../cli/natpmpManager.h"
-#include "../dialogs/aboutDialog.h"
 #include "../widgets/quickSettingSource.h"
 #include "../widgets/toggleWithStatus.h"
 
 class CliSettingControls;
 class GlobeAnimationCombo;
+class NumberSpinner;
 
 // ---------------------------------------------------------------------------
 // SettingsPage
@@ -93,7 +93,7 @@ private:
     [[nodiscard]] static QString globeDescription();
 
     // Recent connections count (0 = disabled)
-    class NumberSpinner* m_recentConnectionsSpinBox = nullptr;
+    NumberSpinner* m_recentConnectionsSpinBox = nullptr;
 
     // "Clear history" row – shown only when history is non-empty
     QWidget* m_clearRecentRow = nullptr;
@@ -128,7 +128,6 @@ private:
     QLabel* m_statusLabel;
     QTimer* m_spinnerTimer;
     int m_spinnerFrame = 0;
-    bool m_loading = false;
 
     // The VPN tab widget – watched via eventFilter to keep m_refreshBtn
     // positioned as a floating overlay in its top-right corner.
@@ -175,7 +174,6 @@ private:
     void maybeWarnReconnect(const QString& cliOutput);
 
     // Auto-start helpers
-    static QString autoStartFilePath();
     static bool autoStartEnabled();
     static bool setAutoStart(bool enable, QString& errorOut);
     void updateAutoConnectRowVisibility() const;

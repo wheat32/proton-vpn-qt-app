@@ -253,6 +253,33 @@ private slots:
                  QStringLiteral("FR"));
     }
 
+    void parseCountryFromServer_secureCoreServer_returnsExitCountry()
+    {
+        // "<entry>-<exit>#n": the connection comes out in the second country.
+        QCOMPARE(StatusMonitor::parseCountryFromServer(
+                     QStringLiteral("CH-US#1 in New York, United States")),
+                 QStringLiteral("US"));
+        QCOMPARE(StatusMonitor::parseCountryFromServer(QStringLiteral("SE-JP#1")), QStringLiteral("JP"));
+        QCOMPARE(StatusMonitor::parseCountryFromServer(QStringLiteral("is-de#2")), QStringLiteral("DE"));
+    }
+
+    void parseCountryFromServer_stateThatLooksLikeACountry_returnsUs()
+    {
+        // California, Delaware and Colorado, not Canada, Germany and Colombia.
+        QCOMPARE(StatusMonitor::parseCountryFromServer(QStringLiteral("US-CA#77")), QStringLiteral("US"));
+        QCOMPARE(StatusMonitor::parseCountryFromServer(QStringLiteral("US-DE#3")), QStringLiteral("US"));
+        QCOMPARE(StatusMonitor::parseCountryFromServer(QStringLiteral("US-CO#21-TOR")), QStringLiteral("US"));
+    }
+
+    void parseCountryFromServer_tagAfterDash_returnsCountry()
+    {
+        QCOMPARE(StatusMonitor::parseCountryFromServer(QStringLiteral("JP-FREE#1")), QStringLiteral("JP"));
+        // A Secure Core entry country's own tagged and plain servers.
+        QCOMPARE(StatusMonitor::parseCountryFromServer(QStringLiteral("CH-FREE#4")), QStringLiteral("CH"));
+        QCOMPARE(StatusMonitor::parseCountryFromServer(QStringLiteral("CH#18-TOR")), QStringLiteral("CH"));
+        QCOMPARE(StatusMonitor::parseCountryFromServer(QStringLiteral("SE#31")), QStringLiteral("SE"));
+    }
+
     void parseCountryFromServer_noPrefix_returnsEmpty()
     {
         QVERIFY(StatusMonitor::parseCountryFromServer(QStringLiteral("server in Nowhere")).isEmpty());

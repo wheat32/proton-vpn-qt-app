@@ -12,6 +12,7 @@
 #include <QJsonObject>
 #include "cli/cliSettings.h"
 #include "cli/statusMonitor.h"
+#include "cli/statusSnapshot.h"
 #include "debug.h"
 #include "uiHelpers.h"
 #include "vpnManager.h"
@@ -163,15 +164,13 @@ bool VpnManager::portForwardingEnabled() const
 
 void VpnManager::startStatusMonitor()
 {
-    if (m_statusMonitor != nullptr)
-        return;
+    if (m_statusMonitor != nullptr) return;
 
     m_statusMonitor = new StatusMonitor(this);
     connect(m_statusMonitor, &StatusMonitor::statusParsed,
             this, [this](const QMap<QString, QString>& fields)
             {
-                if (m_state == VpnState::Connecting || m_state == VpnState::Disconnecting)
-                    return; // ignore polls during in-progress transitions
+                if (m_state == VpnState::Connecting || m_state == VpnState::Disconnecting) return; // ignore polls during in-progress transitions
                 applyStatusFields(fields);
             });
 
@@ -180,8 +179,7 @@ void VpnManager::startStatusMonitor()
 
 void VpnManager::stopStatusMonitor()
 {
-    if (m_statusMonitor == nullptr)
-        return;
+    if (m_statusMonitor == nullptr) return;
 
     m_statusMonitor->stop();
     m_statusMonitor->deleteLater();
@@ -221,84 +219,94 @@ QString VpnManager::stateToString(const VpnState state)
 
 void VpnManager::applyStatusFields(const QMap<QString, QString>& fields)
 {
+    const VpnState prevState  = m_state;
+    const QString  prevServer = m_connectedServer;
+
+    const StatusSnapshot::Outcome outcome = StatusSnapshot::apply(m_state, m_connectedServer, fields);
+
     // A snapshot with no "status" field is not a disconnect - it is a snapshot
     // we could not read (empty output, a CLI traceback, a hung invocation).
     // Treating it as Disconnected would tear down a live session in the UI:
     // stop the elapsed timer, stop the port-forwarding keep-alive, fire a
     // spurious desktop notification, and potentially trigger auto-connect.
     // Ignore it and keep the last known state until a readable poll arrives.
-    if (fields.contains(QStringLiteral("status")) == false)
+    if (outcome.readable == false)
     {
         DBG_POLL(QStringLiteral("Snapshot had no status field - ignoring "
                                 "(keeping state: %1).").arg(stateToString(m_state)));
         return;
     }
 
-    const QString statusVal = fields.value(QStringLiteral("status")).toLower();
-    const VpnState newState = (statusVal == QStringLiteral("connected"))
-                              ? VpnState::Connected
-                              : VpnState::Disconnected;
+    m_state           = outcome.state;
+    m_connectedServer = outcome.server;
 
-    const QString server = (newState == VpnState::Connected)
-                           ? fields.value(QStringLiteral("server"))
-                           : QString();
-    const QString city = StatusMonitor::parseCityFromServer(server);
-    const QString info = server.isEmpty()
-                        ? QString() :
-                        QStringLiteral("Connected to %1.").arg(server);
-
-    // Country code - e.g. "US" from "US-NJ#203 in Secaucus, United States".
-    const QString countryCode = StatusMonitor::parseCountryFromServer(server);
-
-    const VpnState prevState  = m_state;
-    const QString  prevServer = m_connectedServer;
-
-    const bool stateChanged  = newState != m_state;
-    const bool serverChanged = stateChanged == false &&
-                               newState == VpnState::Connected &&
-                               m_connectedServer.isEmpty() == false &&
-                               server != m_connectedServer;
-
-    if (stateChanged || serverChanged)
+    if (outcome.stateChanged == true || outcome.serverChanged == true)
     {
-        m_state           = newState;
-        m_connectedServer = (newState == VpnState::Connected) ? server : QString();
-
-        if (newState == VpnState::Connected)
+        if (m_state == VpnState::Connected)
         {
+            const QString city = StatusMonitor::parseCityFromServer(m_connectedServer);
             if (city.isEmpty() == false)
             {
                 emit connectionCityKnown(city);
             }
+            // Country code - e.g. "US" from "US-NJ#203 in Secaucus, United States".
+            const QString countryCode = StatusMonitor::parseCountryFromServer(m_connectedServer);
             if (countryCode.isEmpty() == false)
             {
                 emit connectionCountryKnown(countryCode);
             }
-            emit connectionStateChanged(m_state, info);
+            emit connectionStateChanged(m_state, m_connectedServer.isEmpty()
+                                                     ? QString()
+                                                     : QStringLiteral("Connected to %1.").arg(m_connectedServer));
         }
         else
         {
             emit connectionStateChanged(m_state, QString());
         }
     }
-    else if (newState == VpnState::Connected && m_connectedServer.isEmpty())
+    else if (outcome.serverLearned == true)
     {
-        m_connectedServer = server;
+        // A connection the app made: the state was announced when the connect
+        // finished, and this is the first word on which server it went to.
+        // Only the country is passed on. The city stays what the user asked
+        // for, so a "fastest server" choice is not turned into the city that
+        // happened to be fastest this time.
+        const QString countryCode = StatusMonitor::parseCountryFromServer(m_connectedServer);
+        if (countryCode.isEmpty() == false)
+        {
+            emit connectionCountryKnown(countryCode);
+        }
+        DBG_POLL(QStringLiteral("Connected server is \"%1\".").arg(m_connectedServer));
     }
 
-    const bool dbgStateChanged  = newState != prevState;
-    const bool dbgServerChanged = dbgStateChanged == false &&
-                                  newState == VpnState::Connected &&
-                                  prevServer.isEmpty() == false &&
-                                  server != prevServer;
-    if (dbgStateChanged)
+    if (outcome.stateChanged == true)
     {
         DBG_POLL(QStringLiteral("State changed:  %1 → %2")
-                     .arg(stateToString(prevState), stateToString(newState)));
+                     .arg(stateToString(prevState), stateToString(m_state)));
     }
-    else if (dbgServerChanged)
+    else if (outcome.serverChanged == true)
     {
         DBG_POLL(QStringLiteral("Server changed: \"%1\" → \"%2\"")
-                     .arg(prevServer, server));
+                     .arg(prevServer, m_connectedServer));
+    }
+}
+
+void VpnManager::announceState(const VpnState state, const QString& info)
+{
+    m_state = state;
+    // Disconnecting still has the server it is leaving; every other state
+    // but Connected has none.
+    if (state != VpnState::Connected && state != VpnState::Disconnecting)
+    {
+        m_connectedServer.clear();
+    }
+    emit connectionStateChanged(m_state, info);
+}
+
+void VpnManager::refreshStatusNow()
+{
+    if (m_statusMonitor != nullptr)
+    {
+        m_statusMonitor->restart();
     }
 }

@@ -31,7 +31,7 @@ constexpr int STAR_FILLED_R = 0xFF;
 constexpr int STAR_FILLED_G = 0xD2;
 constexpr int STAR_FILLED_B = 0x4A;
 
-// Empty star: muted purple-grey #777799
+// Empty star: muted purple-gray #777799
 constexpr int STAR_EMPTY_R = 0x77;
 constexpr int STAR_EMPTY_G = 0x77;
 constexpr int STAR_EMPTY_B = 0x99;

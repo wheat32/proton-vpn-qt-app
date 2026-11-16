@@ -74,7 +74,7 @@ void PickerDrawer::toggle()
 
     const int fromW = m_expanded ? EXPANDED_DRAWER_WIDTH : COLLAPSED_DRAWER_WIDTH;
     const int toW   = m_expanded ? COLLAPSED_DRAWER_WIDTH : EXPANDED_DRAWER_WIDTH;
-    m_expanded = !m_expanded;
+    m_expanded = (m_expanded == false);
 
     if (m_expanded == false)
     {

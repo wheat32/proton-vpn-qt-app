@@ -55,6 +55,20 @@ info()  { echo -e "${GREEN}[build-appimage]${NC} $*"; }
 warn()  { echo -e "${YELLOW}[build-appimage]${NC} $*"; }
 die()   { echo -e "${RED}[build-appimage] ERROR:${NC} $*" >&2; exit 1; }
 
+# -- Download helper -----------------------------------------------------------
+# Downloads to a temporary name first, so a failed download never leaves a
+# partial file that the next run would take for a finished one.
+download() {
+    local url="$1" dest="$2"
+    local partial="${dest}.part"
+    rm -f "${partial}"
+    if ! wget -q --show-progress -O "${partial}" "${url}"; then
+        rm -f "${partial}"
+        die "Download failed: ${url}"
+    fi
+    mv "${partial}" "${dest}"
+}
+
 # -- Target architecture -------------------------------------------------------
 # Each upstream names the same CPU differently, so map the host architecture to
 # every naming scheme this script needs in one place.
@@ -170,11 +184,12 @@ DEB_URLS="${BUILD_ROOT}/protonvpn-deb-urls.txt"
 info "Resolving package URLs from ProtonVPN apt repo..."
 python3 "${SCRIPT_DIR}/appimage/fetch-cli-debs.py" "${CLI_VERSION}" "${DEB_ARCH}" > "${DEB_URLS}"
 
+# -s, not -f: an empty file is a failed download from before.
 while IFS= read -r url; do
     dest="${DEB_CACHE}/$(basename "${url}")"
-    if [[ ! -f "${dest}" ]]; then
+    if [[ ! -s "${dest}" ]]; then
         info "Downloading $(basename "${url}")..."
-        wget -q --show-progress -O "${dest}" "${url}"
+        download "${url}" "${dest}"
     fi
 done < "${DEB_URLS}"
 
@@ -274,12 +289,13 @@ declare -A TOOL_URLS=(
     ["${APPIMAGETOOL}"]="https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${APPIMAGE_ARCH}.AppImage"
 )
 
+# -s, not -f: an empty file is a failed download from before.
 for dest in "${!TOOL_URLS[@]}"; do
-    if [[ ! -f "${dest}" ]]; then
+    if [[ ! -s "${dest}" ]]; then
         info "Downloading $(basename "${dest}")..."
-        wget -q --show-progress -O "${dest}" "${TOOL_URLS[${dest}]}"
-        chmod +x "${dest}"
+        download "${TOOL_URLS[${dest}]}" "${dest}"
     fi
+    chmod +x "${dest}"
 done
 
 # -- Bundle Qt + gi shared libraries via linuxdeploy --------------------------
@@ -448,8 +464,13 @@ for asset in data['assets']:
     [[ -n "${PBS_URL}" ]] || die "Could not find python-build-standalone ${SYSTEM_PY_VER} asset"
     info "Downloading portable Python: $(basename "${PBS_URL}")..."
     mkdir -p "${PYTHON_CACHE}"
-    wget -q --show-progress -O "${PYTHON_CACHE}/python.tar.gz" "${PBS_URL}"
-    tar -xzf "${PYTHON_CACHE}/python.tar.gz" -C "${PYTHON_CACHE}"
+    download "${PBS_URL}" "${PYTHON_CACHE}/python.tar.gz"
+    # Unpacked beside the cache and moved in whole, so python/ never exists half unpacked.
+    rm -rf "${PYTHON_CACHE}/unpack"
+    mkdir -p "${PYTHON_CACHE}/unpack"
+    tar -xzf "${PYTHON_CACHE}/python.tar.gz" -C "${PYTHON_CACHE}/unpack"
+    mv "${PYTHON_CACHE}/unpack/python" "${PYTHON_CACHE}/python"
+    rmdir "${PYTHON_CACHE}/unpack"
 fi
 
 info "Installing portable Python into AppDir..."

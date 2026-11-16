@@ -37,6 +37,20 @@ info()  { echo -e "${GREEN}[build-appimage-lite]${NC} $*"; }
 warn()  { echo -e "${YELLOW}[build-appimage-lite]${NC} $*"; }
 die()   { echo -e "${RED}[build-appimage-lite] ERROR:${NC} $*" >&2; exit 1; }
 
+# -- Download helper -----------------------------------------------------------
+# Downloads to a temporary name first, so a failed download never leaves a
+# partial file that the next run would take for a finished one.
+download() {
+    local url="$1" dest="$2"
+    local partial="${dest}.part"
+    rm -f "${partial}"
+    if ! wget -q --show-progress -O "${partial}" "${url}"; then
+        rm -f "${partial}"
+        die "Download failed: ${url}"
+    fi
+    mv "${partial}" "${dest}"
+}
+
 # -- Target architecture -------------------------------------------------------
 # Each upstream names the same CPU differently, so map the host architecture to
 # every naming scheme this script needs in one place.
@@ -165,12 +179,13 @@ declare -A TOOL_URLS=(
     ["${APPIMAGETOOL}"]="https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${APPIMAGE_ARCH}.AppImage"
 )
 
+# -s, not -f: an empty file is a failed download from before.
 for dest in "${!TOOL_URLS[@]}"; do
-    if [[ ! -f "${dest}" ]]; then
+    if [[ ! -s "${dest}" ]]; then
         info "Downloading $(basename "${dest}")..."
-        wget -q --show-progress -O "${dest}" "${TOOL_URLS[${dest}]}"
-        chmod +x "${dest}"
+        download "${TOOL_URLS[${dest}]}" "${dest}"
     fi
+    chmod +x "${dest}"
 done
 
 # -- Bundle Qt shared libraries ------------------------------------------------
