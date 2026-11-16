@@ -7,6 +7,7 @@
 #include <QKeyEvent>
 #include <QPointer>
 #include <QResizeEvent>
+#include <QShowEvent>
 #include <QTimer>
 #include <QStackedWidget>
 #include <QToolButton>
@@ -106,11 +107,17 @@ private:
     void repositionLoginDebugBtn();
     void setupSidebar();
     void refreshIcons();
-    void setNavActive(const QToolButton* btn);
     void startupCheck() const;
     void checkForUpdates();
+    // Builds the tray icon and its menu. Called at startup when the desktop
+    // has a tray, or later when one turns up.
+    void createTrayIcon();
+    static QIcon trayIconFor(VpnState state);
     void updateTrayIcon(VpnState state);
     void updateTrayTooltipAndAction(VpnState state) const;
+    // Records whether an account is signed in, which the tray's Connect
+    // action depends on.
+    void setSignedIn(bool signedIn);
     void notifyStateTransition(VpnState state);
     // Prompts before quitting with an active connection.  Returns true when the
     // caller should proceed with the quit.
@@ -120,6 +127,9 @@ private:
     void closeEvent(QCloseEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
+    void showEvent(QShowEvent* event) override;
+    // Hands AppConfig's background status check frequency to the manager.
+    void applyStatusCheckSetting() const;
     void maybeShowWhatsNew();
     // Shows the VPN page's first-launch tip on the power button once the page
     // is up and the What's New dialog, which a first launch also opens, is
@@ -131,6 +141,8 @@ private:
     QSystemTrayIcon* m_trayIcon = nullptr;
     QAction* m_trayConnectAction = nullptr;
     bool m_startupAutoConnectPending = false; // auto-connect if the first known state is Disconnected
+    bool m_signedIn = false;             // an account is signed in
+    bool m_sessionExpiredNotice = false; // the sign-out in progress was forced by an expired session
     VpnState m_lastNotifiedState = VpnState::Unknown;
     bool m_whatsNewShown = false; // guard so we only show the dialog once per launch
     QPointer<QDialog> m_whatsNewDialog;

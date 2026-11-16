@@ -448,7 +448,9 @@ QString usStateName(const QString& stateCode)
 QString regionForCity(const QString& countryCode, const QString& city)
 {
     if (isUnitedStates(countryCode) == false || city.isEmpty())
+    {
         return {};
+    }
 
     const auto it = usCityStates().find(city.trimmed().toLower());
     return it != usCityStates().end() ? usStateName(it.value()) : QString();
@@ -458,7 +460,9 @@ QString cityWithRegion(const QString& countryCode, const QString& city)
 {
     const QString region = regionForCity(countryCode, city);
     if (region.isEmpty() || city.contains(region, Qt::CaseInsensitive))
+    {
         return city;
+    }
 
     return city + QStringLiteral(", ") + region;
 }
@@ -488,8 +492,7 @@ QString withUsStates(const QString& text)
             : usStateName(stateCode);
 
         // Unknown state, or the city is the state (Washington): leave it alone.
-        if (state.isEmpty() || city.compare(state, Qt::CaseInsensitive) == 0)
-            continue;
+        if (state.isEmpty() || city.compare(state, Qt::CaseInsensitive) == 0) continue;
 
         const qsizetype cityEnd = match.capturedStart(2) + match.capturedLength(2);
         result += text.mid(copiedTo, cityEnd - copiedTo);
@@ -502,10 +505,26 @@ QString withUsStates(const QString& text)
 }
 
 // ---------------------------------------------------------------------------
+// protonCountryCode
+// ---------------------------------------------------------------------------
+QString protonCountryCode(const QString& isoCode)
+{
+    if (isoCode.compare(QLatin1String("GB"), Qt::CaseInsensitive) == 0)
+    {
+        return QStringLiteral("UK");
+    }
+    return isoCode;
+}
+
+// ---------------------------------------------------------------------------
 // detectUserCountry
 // ---------------------------------------------------------------------------
 QString detectUserCountry()
 {
+    // Both sources give ISO codes, and every caller hands the result to the
+    // CLI or compares it with the CLI's country list, so each is returned as
+    // Proton's code.
+
     // 1. Try system timezone
     const QByteArray tzId = QTimeZone::systemTimeZoneId();
     if (tzId.isEmpty() == false)
@@ -514,7 +533,7 @@ QString detectUserCountry()
         const auto it = kTimezoneToCountry.find(tzStr);
         if (it != kTimezoneToCountry.end())
         {
-            return it.value();
+            return protonCountryCode(it.value());
         }
     }
 
@@ -527,7 +546,7 @@ QString detectUserCountry()
         const QString code = QLocale::territoryToCode(territory);
         if (code.isEmpty() == false)
         {
-            return code.toUpper();
+            return protonCountryCode(code.toUpper());
         }
 #endif
         // Fallback: parse the BCP-47 name (e.g. "en-US" -> "US")
@@ -538,7 +557,7 @@ QString detectUserCountry()
             const QString regionTag = bcp47.mid(dashPos + 1).toUpper();
             if (regionTag.length() == ISO_COUNTRY_CODE_LENGTH && regionTag[0].isLetter() && regionTag[1].isLetter())
             {
-                return regionTag;
+                return protonCountryCode(regionTag);
             }
         }
     }
@@ -603,7 +622,9 @@ QIcon flagIcon(const QString& countryCode)
     const QString key = countryCode.toLower();
     const auto it = cache.find(key);
     if (it != cache.end())
+    {
         return it.value();
+    }
 
     const QString path = QStringLiteral(":/flags/") + key;
     if (QFile::exists(path) == false)

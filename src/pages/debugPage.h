@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QLabel>
 #include "../cli/signin/signinFlow.h"
+#include "../vpnManager.h"
 #ifdef QT_DEBUG
 #include <QLineEdit>
 #endif
@@ -34,6 +35,9 @@ signals:
     void homeErrorRequested(const QString& details);
     // Put the home screen back the way the connection state has it.
     void homeErrorHidden();
+    // Show the UI as it is for a free or a Plus account, or by the account's
+    // own plan again (AccountType::Unknown).
+    void accountTypePreviewRequested(AccountType type);
 
 private slots:
     void refreshValues() const;

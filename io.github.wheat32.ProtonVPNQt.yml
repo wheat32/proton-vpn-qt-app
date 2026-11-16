@@ -49,6 +49,7 @@ modules:
     builddir: true
     config-opts:
       - -DCMAKE_BUILD_TYPE=Release
+      - -DBUILD_TESTING=OFF
     subdir: src
     sources:
       - type: dir

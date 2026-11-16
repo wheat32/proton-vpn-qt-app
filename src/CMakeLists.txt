@@ -98,6 +98,8 @@ set(SOURCES
         widgets/pickerBase.h
         widgets/pickerDrawer.h
         widgets/pickerDrawer.cpp
+        widgets/chevronLabel.h
+        widgets/collapsibleSection.h
         widgets/plusDivider.h
         widgets/quickSettingSource.h
         widgets/quickSettingsMenu.h
@@ -226,9 +228,12 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/io.github.wheat32.ProtonVPNQt.metainfo
         DESTINATION share/metainfo
 )
 
-#  Tests
-enable_testing()
-add_subdirectory(tests)
+#  Tests (packages that only install the app pass -DBUILD_TESTING=OFF)
+option(BUILD_TESTING "Build the unit tests" ON)
+if(BUILD_TESTING)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
 
 
 

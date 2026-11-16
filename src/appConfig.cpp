@@ -17,6 +17,11 @@ QString configFile() { return AppConfig::configDir() + QStringLiteral("/app.json
 
 constexpr int DEFAULT_RECENT_CONNECTIONS_COUNT = 5;
 
+// Seconds between background status checks, by StatusCheck value.
+constexpr int STATUS_CHECK_FREQUENT_S = 15;
+constexpr int STATUS_CHECK_BALANCED_S = 30;
+constexpr int STATUS_CHECK_RELAXED_S  = 60;
+
 // Between the country code and the city in auto_connect_server.
 constexpr QLatin1StringView AUTO_CONNECT_SERVER_SEPARATOR("|");
 
@@ -73,6 +78,57 @@ AppConfig::GlobeAnimation AppConfig::globeAnimationFromName(const QString& name)
         return GlobeAnimation::Off;
     }
     return GlobeAnimation::Auto;
+}
+
+// static
+QString AppConfig::statusCheckName(const StatusCheck value)
+{
+    switch (value)
+    {
+        case StatusCheck::Frequent:
+            return QStringLiteral("frequent");
+
+        case StatusCheck::Relaxed:
+            return QStringLiteral("relaxed");
+
+        case StatusCheck::Off:
+            return QStringLiteral("off");
+
+        default:
+            return QStringLiteral("balanced");
+    }
+}
+
+// static
+AppConfig::StatusCheck AppConfig::statusCheckFromName(const QString& name)
+{
+    for (const StatusCheck value : {StatusCheck::Frequent, StatusCheck::Relaxed, StatusCheck::Off})
+    {
+        if (name == statusCheckName(value))
+        {
+            return value;
+        }
+    }
+    return StatusCheck::Balanced;
+}
+
+// static
+int AppConfig::statusCheckSeconds(const StatusCheck value)
+{
+    switch (value)
+    {
+        case StatusCheck::Frequent:
+            return STATUS_CHECK_FREQUENT_S;
+
+        case StatusCheck::Relaxed:
+            return STATUS_CHECK_RELAXED_S;
+
+        case StatusCheck::Off:
+            return STATUS_CHECK_NEVER;
+
+        default:
+            return STATUS_CHECK_BALANCED_S;
+    }
 }
 
 // static
@@ -153,6 +209,7 @@ void AppConfig::load()
 
     m_globePauseWhenUnfocused = obj.value(QStringLiteral("globe_pause_when_unfocused")).toBool(false);
     m_globeAnimation = globeAnimationFromName(obj.value(QStringLiteral("globe_animation")).toString());
+    m_statusCheck = statusCheckFromName(obj.value(QStringLiteral("status_check")).toString());
 
     const QString themeStr = obj.value(QStringLiteral("theme")).toString(QStringLiteral("system"));
     if (themeStr == QStringLiteral("dark"))
@@ -192,6 +249,7 @@ void AppConfig::logLoadedConfig() const
     DBG_SETTINGS(QStringLiteral("  split_view_countries_ratio = ") + QString::number(m_splitViewCountriesRatio));
     DBG_SETTINGS(QStringLiteral("  theme                    = ") + themeName(m_theme));
     DBG_SETTINGS(QStringLiteral("  globe_animation          = ") + globeAnimationName(m_globeAnimation));
+    DBG_SETTINGS(QStringLiteral("  status_check             = ") + statusCheckName(m_statusCheck));
     DBG_SETTINGS(QStringLiteral("  globe_pause_when_unfocused = ") + boolText(m_globePauseWhenUnfocused));
 }
 
@@ -223,6 +281,7 @@ bool AppConfig::save() const
     obj[QStringLiteral("verbose_logging")] = m_verboseLogging;
     obj[QStringLiteral("split_view_countries_ratio")] = m_splitViewCountriesRatio;
     obj[QStringLiteral("globe_animation")] = globeAnimationName(m_globeAnimation);
+    obj[QStringLiteral("status_check")] = statusCheckName(m_statusCheck);
     obj[QStringLiteral("globe_pause_when_unfocused")] = m_globePauseWhenUnfocused;
 
     obj[QStringLiteral("theme")] = themeName(m_theme);
@@ -330,6 +389,16 @@ void AppConfig::setGlobeAnimation(const GlobeAnimation value)
     if (m_globeAnimation == value) return;
     DBG_SETTINGS(QStringLiteral("Setting changed: globe_animation = ") + globeAnimationName(value));
     m_globeAnimation = value;
+    (void)save();
+}
+
+AppConfig::StatusCheck AppConfig::statusCheck() const { return m_statusCheck; }
+
+void AppConfig::setStatusCheck(const StatusCheck value)
+{
+    if (m_statusCheck == value) return;
+    DBG_SETTINGS(QStringLiteral("Setting changed: status_check = ") + statusCheckName(value));
+    m_statusCheck = value;
     (void)save();
 }
 
@@ -510,6 +579,7 @@ void AppConfig::resetToDefaults()
     m_splitViewCountriesRatio = SPLIT_RATIO_DEFAULT;
     m_globeAnimation          = GlobeAnimation::Auto;
     m_globePauseWhenUnfocused = false;
+    m_statusCheck             = StatusCheck::Balanced;
     FileLogger::instance().setEnabled(false);
     VerboseLog::setSetting(false);
 }

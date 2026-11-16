@@ -1,6 +1,7 @@
 #include <QApplication>
 #include <QButtonGroup>
-#include <QFile>
+#include <QDBusConnection>
+#include <QDBusServiceWatcher>
 #include <QFrame>
 #include <QGuiApplication>
 #include <QStyleHints>
@@ -18,6 +19,7 @@
 #include <QVersionNumber>
 #include <utility>
 #include "appConfig.h"
+#include "appVersion.h"
 #include "connectionHistory.h"
 #include "debug.h"
 #include "dialogs/quitDialog.h"
@@ -89,6 +91,10 @@ constexpr const char* UPDATE_VERSION_URL =
 // Startup
 constexpr int WHATS_NEW_DELAY_MS = 400;
 
+// The D-Bus service a desktop's system tray registers (the StatusNotifierItem
+// watcher); its arrival means a tray icon can be shown.
+constexpr const char* TRAY_WATCHER_SERVICE = "org.kde.StatusNotifierWatcher";
+
 // Renders the SVG at `path` into a QIcon of `size`.
 // When `tintForTheme` is true (used for monochrome utility icons), the result
 // is tinted white on dark backgrounds and dark navy on light backgrounds so
@@ -117,10 +123,11 @@ MainWindow::MainWindow(QWidget* parent)
     resize(INITIAL_WINDOW_WIDTH, INITIAL_WINDOW_HEIGHT);
 
     m_manager = new VpnManager(this);
+    applyStatusCheckSetting();
     m_networkManager = new QNetworkAccessManager(this);
 
     // Root layout: sidebar + content
-    auto* rootLayout = new QHBoxLayout(this);
+    QHBoxLayout* rootLayout = new QHBoxLayout(this);
     rootLayout->setContentsMargins(0, 0, 0, 0);
     rootLayout->setSpacing(0);
 
@@ -144,10 +151,10 @@ MainWindow::MainWindow(QWidget* parent)
     rootLayout->addWidget(m_stack);
 
     // Loading page (index 0)
-    auto* loadingPage = new QWidget();
-    auto* loadingLayout = new QVBoxLayout(loadingPage);
+    QWidget* loadingPage = new QWidget();
+    QVBoxLayout* loadingLayout = new QVBoxLayout(loadingPage);
     loadingLayout->setAlignment(Qt::AlignCenter);
-    auto* loadingLabel = new QLabel(tr("Starting\u2026"), loadingPage);
+    QLabel* loadingLabel = new QLabel(tr("Starting\u2026"), loadingPage);
     loadingLabel->setAlignment(Qt::AlignCenter);
     loadingLayout->addWidget(loadingLabel);
     m_stack->addWidget(loadingPage); // index 0 = Loading
@@ -274,7 +281,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_countriesPage, &CountriesPage::connectRequested, this,
             [this](const QString& country, const QString& city)
             {
-                m_vpnPage->notifyExternalConnect(city);
+                m_vpnPage->notifyExternalConnect(country, city);
                 if (country.isEmpty() == false && city.isEmpty() == false)
                 {
                     const QString name = GeoUtils::countryCodeToName(country);
@@ -315,6 +322,8 @@ MainWindow::MainWindow(QWidget* parent)
             m_vpnPage, &VpnPage::updateQuickSettings);
     connect(m_settingsPage, &SettingsPage::countriesSidebarVisibilityChanged,
             this, &MainWindow::updateSplitView);
+    connect(m_settingsPage, &SettingsPage::statusCheckChanged,
+            this, &MainWindow::applyStatusCheckSetting);
 
     // CLI not responding page (index 7)
     m_cliNotRespondingPage = new CliNotRespondingPage();
@@ -341,6 +350,8 @@ MainWindow::MainWindow(QWidget* parent)
     {
         m_vpnPage->onStateChanged(VpnState::Error, details);
     });
+    connect(m_debugPage, &DebugPage::accountTypePreviewRequested,
+            m_manager, &VpnManager::previewAccountType);
     connect(m_debugPage, &DebugPage::homeErrorHidden, this, [this]()
     {
         m_vpnPage->onStateChanged(m_lastReportedState, m_lastReportedInfo);
@@ -395,6 +406,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_manager, &VpnManager::loginStatusResult, this, [this](bool loggedIn, const QString& username)
     {
         Q_UNUSED(username)
+        setSignedIn(loggedIn);
         if (loggedIn)
         {
             m_sidebar->setEnabled(true);
@@ -424,6 +436,7 @@ MainWindow::MainWindow(QWidget* parent)
         m_loginPage->setLoading(false);
         if (ok)
         {
+            setSignedIn(true);
             m_loginPage->reset();
             m_sidebar->setEnabled(true);
             showPage(Page::Vpn);
@@ -440,14 +453,25 @@ MainWindow::MainWindow(QWidget* parent)
     // The CLI reported that the server rejected the session (from any command,
     // not just connect). Sign out so the user lands on the login page instead
     // of on a VPN page where every action fails.
-    connect(m_manager, &VpnManager::sessionExpired, m_manager, &VpnManager::signOut);
+    connect(m_manager, &VpnManager::sessionExpired, this, [this]()
+    {
+        // The login page says why it is suddenly back.
+        m_sessionExpiredNotice = true;
+        m_manager->signOut();
+    });
 
     connect(m_manager, &VpnManager::signOutFinished, this, [this](bool)
     {
         // A startup auto-connect still waiting for its first Disconnected state
         // must not fire on the one signOut() announces next, while signed out.
         m_startupAutoConnectPending = false;
+        setSignedIn(false);
         m_loginPage->reset();
+        if (m_sessionExpiredNotice == true)
+        {
+            m_sessionExpiredNotice = false;
+            m_loginPage->setError(tr("Your session is no longer valid. Please sign in again."));
+        }
         m_sidebar->setEnabled(false);
         showPage(Page::Login);
     });
@@ -484,50 +508,22 @@ MainWindow::MainWindow(QWidget* parent)
     // blocks a second launch.  Every m_trayIcon use is null-guarded.
     if (QSystemTrayIcon::isSystemTrayAvailable())
     {
-        m_trayIcon = new QSystemTrayIcon(this);
-        auto* trayMenu = new QMenu(this);
-        trayMenu->addAction(tr("Show"), this, [this]()
-        {
-            showNormal();
-            raise();
-            activateWindow();
-        });
-        trayMenu->addSeparator();
-        m_trayConnectAction = trayMenu->addAction(tr("Connect"), this, [this]()
-        {
-            const VpnState state = m_manager->currentState();
-            if (state == VpnState::Connected)
-            {
-                m_manager->disconnectVpn();
-            }
-            else if (state == VpnState::Disconnected || state == VpnState::Error)
-            {
-                m_manager->connectVpn();
-            }
-        });
-        trayMenu->addSeparator();
-        trayMenu->addAction(tr("Quit"), this, [this]()
-        {
-            if (confirmQuit() == false) return;
-            QApplication::quit();
-        });
-        m_trayIcon->setContextMenu(trayMenu);
-        connect(m_trayIcon, &QSystemTrayIcon::activated, this,
-                [this](const QSystemTrayIcon::ActivationReason reason)
-                {
-                    if (reason == QSystemTrayIcon::Trigger)
-                    {
-                        showNormal();
-                        raise();
-                        activateWindow();
-                    }
-                });
-        updateTrayIcon(VpnState::Unknown);
-        m_trayIcon->show();
+        createTrayIcon();
     }
     else
     {
         DBG_APP(QStringLiteral("No system tray available - running without a tray icon."));
+        // The app can start before the desktop's tray does (it is launched at
+        // login), so the icon is added if the tray turns up later.
+        QDBusServiceWatcher* trayWatcher = new QDBusServiceWatcher(
+            QString::fromLatin1(TRAY_WATCHER_SERVICE), QDBusConnection::sessionBus(),
+            QDBusServiceWatcher::WatchForRegistration, this);
+        connect(trayWatcher, &QDBusServiceWatcher::serviceRegistered, this, [this]()
+        {
+            if (m_trayIcon != nullptr || QSystemTrayIcon::isSystemTrayAvailable() == false) return;
+            DBG_APP(QStringLiteral("A system tray became available - adding the tray icon."));
+            createTrayIcon();
+        });
     }
 
     // Follow the desktop's light/dark switch while the theme setting is
@@ -540,8 +536,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect(QGuiApplication::styleHints(), &QStyleHints::colorSchemeChanged,
             this, [](Qt::ColorScheme)
             {
-                if (AppConfig::instance().theme() != AppConfig::Theme::System)
-                    return; // the user pinned a theme - the desktop does not override it
+                if (AppConfig::instance().theme() != AppConfig::Theme::System) return; // the user pinned a theme - the desktop does not override it
 
                 DBG_APP(QStringLiteral("System color scheme changed - reapplying theme."));
                 ThemeManager::apply(AppConfig::Theme::System);
@@ -554,14 +549,84 @@ MainWindow::MainWindow(QWidget* parent)
     QTimer::singleShot(UPDATE_CHECK_DELAY_MS, this, &MainWindow::checkForUpdates);
 }
 
+void MainWindow::createTrayIcon()
+{
+    m_trayIcon = new QSystemTrayIcon(this);
+    QMenu* trayMenu = new QMenu(this);
+    trayMenu->addAction(tr("Show"), this, [this]()
+    {
+        showNormal();
+        raise();
+        activateWindow();
+    });
+    trayMenu->addSeparator();
+    m_trayConnectAction = trayMenu->addAction(tr("Connect"), this, [this]()
+    {
+        const VpnState state = m_manager->currentState();
+        if (state == VpnState::Connected)
+        {
+            m_manager->disconnectVpn();
+        }
+        else if (state == VpnState::Disconnected || state == VpnState::Error)
+        {
+            m_manager->connectVpn();
+        }
+    });
+    trayMenu->addSeparator();
+    trayMenu->addAction(tr("Quit"), this, [this]()
+    {
+        if (confirmQuit() == false) return;
+        QApplication::quit();
+    });
+    m_trayIcon->setContextMenu(trayMenu);
+    connect(m_trayIcon, &QSystemTrayIcon::activated, this,
+            [this](const QSystemTrayIcon::ActivationReason reason)
+            {
+                if (reason == QSystemTrayIcon::Trigger)
+                {
+                    showNormal();
+                    raise();
+                    activateWindow();
+                }
+            });
+    // The state so far: Unknown at startup, or whatever it is by the time a
+    // tray that started late has turned up.
+    m_trayIcon->setIcon(trayIconFor(m_manager->currentState()));
+    updateTrayTooltipAndAction(m_manager->currentState());
+    m_trayIcon->show();
+}
+
+void MainWindow::applyStatusCheckSetting() const
+{
+    m_manager->setStatusPollInterval(AppConfig::statusCheckSeconds(AppConfig::instance().statusCheck()));
+}
+
+// The status may have changed while nobody was looking, and with background
+// checks set to rare or off the window would otherwise open on old news.
+void MainWindow::showEvent(QShowEvent* event)
+{
+    QWidget::showEvent(event);
+    m_manager->refreshStatus();
+}
+
+void MainWindow::setSignedIn(const bool signedIn)
+{
+    if (m_signedIn == signedIn) return;
+    m_signedIn = signedIn;
+    if (m_trayIcon != nullptr)
+    {
+        updateTrayTooltipAndAction(m_manager->currentState());
+    }
+}
+
 void MainWindow::setupSidebar()
 {
-    auto* layout = new QVBoxLayout(m_sidebar);
+    QVBoxLayout* layout = new QVBoxLayout(m_sidebar);
     layout->setContentsMargins(0, SIDEBAR_MARGIN, 0, SIDEBAR_MARGIN);
     layout->setSpacing(SIDEBAR_LAYOUT_SPACING);
     layout->setAlignment(Qt::AlignHCenter);
 
-    auto* btnGroup = new QButtonGroup(m_sidebar);
+    QButtonGroup* btnGroup = new QButtonGroup(m_sidebar);
     btnGroup->setExclusive(true);
 
     // Logo button is part of the exclusive group so clicking it automatically
@@ -712,26 +777,11 @@ void MainWindow::showCliNotResponding()
 #ifdef QT_DEBUG
 void MainWindow::repositionLoginDebugBtn()
 {
-    if (m_loginDebugBtn == nullptr)
-        return;
+    if (m_loginDebugBtn == nullptr) return;
     const int margin = SIDEBAR_MARGIN;
     m_loginDebugBtn->move(margin, height() - m_loginDebugBtn->height() - margin);
 }
 #endif
-
-void MainWindow::setNavActive(const QToolButton* btn)
-{
-    for (QToolButton* b : {m_logoBtn, m_countriesNavBtn, m_accountNavBtn, m_settingsNavBtn})
-    {
-        b->setChecked(b == btn);
-    }
-#ifdef QT_DEBUG
-    if (m_debugNavBtn != nullptr)
-    {
-        m_debugNavBtn->setChecked(m_debugNavBtn == btn);
-    }
-#endif
-}
 
 void MainWindow::startupCheck() const
 {
@@ -740,8 +790,7 @@ void MainWindow::startupCheck() const
 
 void MainWindow::checkForUpdates()
 {
-    if (AppConfig::instance().checkForUpdates() == false)
-        return;
+    if (AppConfig::instance().checkForUpdates() == false) return;
 
     DBG_APP(QStringLiteral("Checking for updates..."));
     QNetworkRequest request(QUrl(QString::fromLatin1(UPDATE_VERSION_URL)));
@@ -760,18 +809,10 @@ void MainWindow::checkForUpdates()
 
         const QJsonObject remoteObj = QJsonDocument::fromJson(reply->readAll()).object();
         const QString remoteVersion = remoteObj.value(QStringLiteral("app_version")).toString();
-        if (remoteVersion.isEmpty())
-            return;
+        if (remoteVersion.isEmpty()) return;
 
-        QString localVersion;
-        QFile vf(QStringLiteral(":/version.json"));
-        if (vf.open(QIODevice::ReadOnly))
-        {
-            localVersion = QJsonDocument::fromJson(vf.readAll())
-                               .object().value(QStringLiteral("app_version")).toString();
-        }
-        if (localVersion.isEmpty())
-            return;
+        const QString localVersion = AppVersion::embedded().appVersion;
+        if (localVersion.isEmpty()) return;
 
         const QVersionNumber remote = QVersionNumber::fromString(remoteVersion);
         const QVersionNumber local  = QVersionNumber::fromString(localVersion);
@@ -828,8 +869,7 @@ void MainWindow::changeEvent(QEvent* event)
 bool MainWindow::confirmQuit()
 {
     const VpnState state = m_manager->currentState();
-    if (state != VpnState::Connected && state != VpnState::Connecting)
-        return true;
+    if (state != VpnState::Connected && state != VpnState::Connecting) return true;
 
     QuitDialog dlg(m_vpnPage->isPortForwardingActive(), this);
     const int result = dlg.exec();
@@ -967,10 +1007,8 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
 
 void MainWindow::sendNotification(const QString& title, const QString& message) const
 {
-    if (AppConfig::instance().notifications() == false)
-        return;
-    if (m_trayIcon == nullptr)
-        return; // notifications are delivered through the tray icon
+    if (AppConfig::instance().notifications() == false) return;
+    if (m_trayIcon == nullptr) return; // notifications are delivered through the tray icon
 
     // Render the ProtonVPN sign SVG into a pixmap to use as the notification icon.
     const QPixmap iconPix = GeoUtils::svgPixmap(QStringLiteral(":/assets/proton-vpn-sign.svg"),
@@ -979,9 +1017,9 @@ void MainWindow::sendNotification(const QString& title, const QString& message) 
     m_trayIcon->showMessage(title, message, QIcon(iconPix), NOTIFICATION_DURATION_MS);
 }
 
-void MainWindow::updateTrayIcon(VpnState state)
+// The tray icon for a state.
+QIcon MainWindow::trayIconFor(const VpnState state)
 {
-    // Choose asset based on state
     QString asset;
     switch (state)
     {
@@ -1002,10 +1040,14 @@ void MainWindow::updateTrayIcon(VpnState state)
             asset = QStringLiteral(":/assets/state-disconnected.svg");
             break;
     }
+    return QIcon(GeoUtils::svgPixmap(asset, TRAY_ICON_SIZE));
+}
 
+void MainWindow::updateTrayIcon(const VpnState state)
+{
     if (m_trayIcon != nullptr)
     {
-        m_trayIcon->setIcon(QIcon(GeoUtils::svgPixmap(asset, TRAY_ICON_SIZE)));
+        m_trayIcon->setIcon(trayIconFor(state));
         updateTrayTooltipAndAction(state);
     }
 
@@ -1054,6 +1096,13 @@ void MainWindow::updateTrayTooltipAndAction(const VpnState state) const
             m_trayConnectAction->setEnabled(false);
             break;
     }
+
+    // Nothing to connect with while signed out (or before the CLI was found):
+    // the command would only fail and leave an error behind the login page.
+    if (m_signedIn == false)
+    {
+        m_trayConnectAction->setEnabled(false);
+    }
 }
 
 // Sends a desktop notification on meaningful state transitions, skipping
@@ -1098,20 +1147,11 @@ void MainWindow::notifyStateTransition(const VpnState state)
 
 void MainWindow::maybeShowWhatsNew()
 {
-    if (m_whatsNewShown)
-        return;
+    if (m_whatsNewShown) return;
 
     m_whatsNewShown = true;
 
-    // Read the current app version from the embedded version.json resource.
-    QString currentVersion;
-    QFile vf(QStringLiteral(":/version.json"));
-    if (vf.open(QIODevice::ReadOnly))
-    {
-        const QJsonObject obj = QJsonDocument::fromJson(vf.readAll()).object();
-        vf.close();
-        currentVersion = obj.value(QStringLiteral("app_version")).toString();
-    }
+    const QString currentVersion = AppVersion::embedded().appVersion;
 
     if (currentVersion.isEmpty())
     {
@@ -1128,7 +1168,7 @@ void MainWindow::maybeShowWhatsNew()
         // showing the dialog on every launch.
         AppConfig::instance().setLastSeenVersion(currentVersion);
 
-        auto* dlg = new WhatsNewDialog(currentVersion, this);
+        WhatsNewDialog* dlg = new WhatsNewDialog(currentVersion, this);
         dlg->setModal(true);
         m_whatsNewDialog = dlg;
         connect(dlg, &QDialog::finished, this, &MainWindow::maybeShowPowerButtonHint);

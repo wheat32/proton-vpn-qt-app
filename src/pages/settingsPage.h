@@ -11,12 +11,17 @@
 #include <utility>
 #include "../vpnManager.h"
 #include "../cli/natpmpManager.h"
-#include "../dialogs/aboutDialog.h"
 #include "../widgets/quickSettingSource.h"
 #include "../widgets/toggleWithStatus.h"
 
+class CollapsibleSection;
+class PlusDivider;
+class QButtonGroup;
+class QResizeEvent;
+
 class CliSettingControls;
 class GlobeAnimationCombo;
+class NumberSpinner;
 
 // ---------------------------------------------------------------------------
 // SettingsPage
@@ -42,6 +47,9 @@ signals:
     void countriesSidebarVisibilityChanged(bool visible);
     // Which quick settings to show changed, or whether to show them at all.
     void quickSettingsChanged();
+    // How often the connection status is checked in the background changed
+    // (AppConfig::statusCheck()).
+    void statusCheckChanged();
 
 private:
     VpnManager* m_manager;
@@ -93,7 +101,7 @@ private:
     [[nodiscard]] static QString globeDescription();
 
     // Recent connections count (0 = disabled)
-    class NumberSpinner* m_recentConnectionsSpinBox = nullptr;
+    NumberSpinner* m_recentConnectionsSpinBox = nullptr;
 
     // "Clear history" row – shown only when history is non-empty
     QWidget* m_clearRecentRow = nullptr;
@@ -109,17 +117,24 @@ private:
     QWidget*          m_showFavoritesDropdownRow    = nullptr;
     ToggleWithStatus* m_showFavoritesDropdownToggle = nullptr;
 
-    // Plus Members Only section (VPN tab)
-    QWidget* m_plusSection  = nullptr;
-    QWidget* m_plusDivider  = nullptr;
+    // Plus Members Only section (VPN tab), and the Plus settings inside its
+    // Advanced section
+    QWidget*     m_plusSection         = nullptr;
+    PlusDivider* m_plusDivider         = nullptr;
+    QWidget*     m_advancedPlusSection = nullptr;
+    PlusDivider* m_advancedPlusDivider = nullptr;
 
     // The card widget that wraps all VPN-tab settings - disabled en-masse
     // while the VPN is connecting or disconnecting.
     QWidget* m_vpnCard = nullptr;
 
     // Plus Members Only section (App tab)
-    QWidget* m_appPlusSection = nullptr;
-    QWidget* m_appPlusDivider = nullptr;
+    QWidget*     m_appPlusSection = nullptr;
+    PlusDivider* m_appPlusDivider = nullptr;
+
+    // Plus Members Only section (Appearance tab)
+    QWidget*     m_appearancePlusSection = nullptr;
+    PlusDivider* m_appearancePlusDivider = nullptr;
 
     // Installed CLI version (cached when cliVersionReady fires)
     QString m_installedCliVersion;
@@ -128,7 +143,6 @@ private:
     QLabel* m_statusLabel;
     QTimer* m_spinnerTimer;
     int m_spinnerFrame = 0;
-    bool m_loading = false;
 
     // The VPN tab widget – watched via eventFilter to keep m_refreshBtn
     // positioned as a floating overlay in its top-right corner.
@@ -151,6 +165,17 @@ private:
     static void addSectionHeader(QWidget* parent, QVBoxLayout* layout, const QString& title);
     // Adds an empty "infoCard" to hold one section's rows.
     static std::pair<QWidget*, QVBoxLayout*> addSectionCard(QWidget* parent, QVBoxLayout* layout);
+    CollapsibleSection* addAdvancedSection(QWidget* parent, QVBoxLayout* layout, bool inCard);
+
+    // Wide layout: a list of the sections beside the settings instead of the
+    // tab bar above them (see WIDE_LAYOUT_MIN_WIDTH in the .cpp).
+    QTabWidget*   m_tabs       = nullptr;
+    QWidget*      m_nav        = nullptr;
+    QButtonGroup* m_navGroup   = nullptr;
+    bool          m_wideLayout = false;
+    void buildSectionNav();
+    void setWideLayout(bool wide);
+    void positionRefreshButton() const;
 
     QList<QuickSettingSource> m_quickSettingSources;
     // Lists a setting for the quick settings, and gives its row the
@@ -175,7 +200,6 @@ private:
     void maybeWarnReconnect(const QString& cliOutput);
 
     // Auto-start helpers
-    static QString autoStartFilePath();
     static bool autoStartEnabled();
     static bool setAutoStart(bool enable, QString& errorOut);
     void updateAutoConnectRowVisibility() const;
@@ -186,4 +210,5 @@ private:
     void onSettingsReady(const QMap<QString, QString>& settings);
     void setLoading(bool loading);
     bool eventFilter(QObject* obj, QEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
 };

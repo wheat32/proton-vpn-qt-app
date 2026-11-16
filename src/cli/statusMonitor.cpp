@@ -1,6 +1,6 @@
 // statusMonitor.cpp
 // StatusMonitor: long-lived subprocess that runs `protonvpn status` in a
-// 15-second loop.  See statusMonitor.h for the full description.
+// loop.  See statusMonitor.h for the full description.
 
 #include "statusMonitor.h"
 #include "cliNoiseFilter.h"
@@ -42,32 +42,20 @@ constexpr const char* NO_CONNECTION_PHRASES[] = {
     "no connection",
 };
 
-// Shell command run by the subprocess:
-//   1. exec -a renames the bash process to PROCESS_NAME (sets argv[0]).
-//   2. The inner bash runs an infinite loop:
-//        a. `protonvpn status` (stdout + stderr merged) - or via flatpak-spawn
-//           when running inside a Flatpak sandbox.
-//        b. ASCII 0x1E (Record Separator) - unambiguous snapshot delimiter
-//        c. sleep 15
-QString buildLoopCommand()
-{
-    // Inside a Flatpak sandbox, `protonvpn` is not available directly - it
-    // must be forwarded to the host via flatpak-spawn.
-    const QString vpnCmd = isRunningAsFlatpak()
-        ? QStringLiteral("flatpak-spawn --host protonvpn status")
-        : QStringLiteral("protonvpn status");
-
-    return QStringLiteral("exec -a protonvpn-qt-status-mon /bin/bash -c "
-                          "'while true; "
-                          "do %1 2>&1; "
-                          "printf \"\\x1e\"; "
-                          "sleep 15; "
-                          "done'").arg(vpnCmd);
-}
+// What the loop sleeps for when it does not poll periodically.
+const QString SLEEP_FOREVER = QStringLiteral("infinity");
 
 // Between the server name and its location in a `protonvpn status` server
 // string: "US-NJ#203 in Secaucus, United States".
 const QString SERVER_LOCATION_SEPARATOR = QStringLiteral(" in ");
+
+// The countries Secure Core connections enter through. A server named
+// "<entry>-<exit>#n" with one of these first is a Secure Core server.
+const QStringList SECURE_CORE_ENTRY_COUNTRIES = {
+    QStringLiteral("CH"), QStringLiteral("IS"), QStringLiteral("SE")};
+
+// Length of a country code, as in "CH-US#1".
+constexpr int COUNTRY_CODE_LENGTH = 2;
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -95,6 +83,31 @@ StatusMonitor::~StatusMonitor()
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+void StatusMonitor::setPollInterval(const int seconds)
+{
+    const int interval = seconds > 0 ? seconds : NO_PERIODIC_POLL;
+    if (m_pollSeconds == interval) return;
+    m_pollSeconds = interval;
+    restart(); // no-op unless running
+}
+
+// static
+// The shell command run by the subprocess:
+//   1. exec -a renames the bash process to PROCESS_NAME (sets argv[0]).
+//   2. The inner bash loops: the status command (stdout + stderr merged),
+//      ASCII 0x1E (Record Separator) as the snapshot delimiter, then the sleep.
+QString StatusMonitor::loopCommand(const QString& statusCommand, const int intervalSeconds)
+{
+    const QString sleepFor = intervalSeconds > 0 ? QString::number(intervalSeconds) : SLEEP_FOREVER;
+    return QStringLiteral("exec -a %1 /bin/bash -c "
+                          "'while true; "
+                          "do %2 2>&1; "
+                          "printf \"\\x1e\"; "
+                          "sleep %3; "
+                          "done'")
+        .arg(QString::fromLatin1(PROCESS_NAME), statusCommand, sleepFor);
+}
 
 void StatusMonitor::start()
 {
@@ -131,6 +144,16 @@ void StatusMonitor::stop()
     m_buffer.clear();
 }
 
+void StatusMonitor::restart()
+{
+    // Not running and not waiting to restart either: never started, or stopped.
+    if (m_process == nullptr && m_restartTimer->isActive() == false) return;
+
+    DBG_STATUS(QStringLiteral("Restarting for a fresh snapshot."));
+    stop();
+    start();
+}
+
 bool StatusMonitor::isRunning() const
 {
     return m_process != nullptr && m_process->state() == QProcess::Running;
@@ -142,10 +165,8 @@ bool StatusMonitor::isRunning() const
 
 void StatusMonitor::launchProcess()
 {
-    if (m_stopping)
-        return;
-    if (m_process != nullptr)
-        return; // already running - never run two monitors at once
+    if (m_stopping) return;
+    if (m_process != nullptr) return; // already running - never run two monitors at once
 
     m_buffer.clear();
     m_process = new QProcess(this);
@@ -167,9 +188,14 @@ void StatusMonitor::launchProcess()
             &QProcess::finished,
             this, &StatusMonitor::onProcessFinished);
 
-    const QString loopCommand = buildLoopCommand();
+    // Inside a Flatpak sandbox, `protonvpn` is not available directly - it
+    // must be forwarded to the host via flatpak-spawn.
+    const QString statusCommand = isRunningAsFlatpak()
+        ? QStringLiteral("flatpak-spawn --host protonvpn status")
+        : QStringLiteral("protonvpn status");
+    const QString command = loopCommand(statusCommand, m_pollSeconds);
     m_process->start(QStringLiteral("/bin/bash"),
-                     {QStringLiteral("-c"), loopCommand});
+                     {QStringLiteral("-c"), command});
 
     if (m_process->waitForStarted(PROCESS_START_TIMEOUT_MS))
     {
@@ -179,12 +205,13 @@ void StatusMonitor::launchProcess()
                     .arg(QString::fromLatin1(PROCESS_NAME))
                     .arg(m_process->processId())
                     .arg(m_restartCount)
-                    .arg(loopCommand));
+                    .arg(command));
     }
     else
     {
-        DBG_STATUS(QStringLiteral("ERROR: process failed to start within 2 s "
-                               "(QProcess::ProcessError=%1).").arg(m_process->error()));
+        DBG_STATUS(QStringLiteral("ERROR: process failed to start within %1 ms "
+                               "(QProcess::ProcessError=%2).")
+                    .arg(PROCESS_START_TIMEOUT_MS).arg(m_process->error()));
     }
 }
 
@@ -290,7 +317,9 @@ QString StatusMonitor::parseCityFromServer(const QString& server)
 {
     const int inPos = server.indexOf(SERVER_LOCATION_SEPARATOR);
     if (inPos < 0)
+    {
         return {};
+    }
     const QString rest    = server.mid(inPos + SERVER_LOCATION_SEPARATOR.size());
     const int    commaPos = rest.indexOf(QLatin1Char(','));
     return (commaPos >= 0 ? rest.left(commaPos) : rest).trimmed();
@@ -306,12 +335,30 @@ QString StatusMonitor::parseServerName(const QString& server)
 // static
 QString StatusMonitor::parseCountryFromServer(const QString& server)
 {
-    // The country code runs up to the first '-' (region or Secure Core
-    // entry follows) or '#' (server number follows), whichever comes first.
-    const QString name = parseServerName(server);
+    // The name starts with a country code, which runs up to the first '-' or
+    // '#', whichever comes first: "DE#42", "US-NJ#203", "JP-FREE#1".
+    const QString name = parseServerName(server).toUpper();
     const int dashPos = name.indexOf(QLatin1Char('-'));
     const int hashPos = name.indexOf(QLatin1Char('#'));
-    const int endPos  = (dashPos >= 0 && (hashPos < 0 || dashPos < hashPos))
-                        ? dashPos : hashPos;
-    return endPos > 0 ? name.left(endPos).toUpper() : QString();
+    const bool dashFirst = dashPos >= 0 && (hashPos < 0 || dashPos < hashPos);
+    const int endPos = dashFirst == true ? dashPos : hashPos;
+    if (endPos <= 0)
+    {
+        return QString();
+    }
+    const QString first = name.left(endPos);
+
+    // What follows the dash is a US state ("US-NJ#203"), a tag ("JP-FREE#1"),
+    // or, for a Secure Core server ("CH-US#1"), the country the connection
+    // comes out in. That one is the server's country: the first code is only
+    // where the traffic enters.
+    if (dashFirst == true && hashPos > dashPos && SECURE_CORE_ENTRY_COUNTRIES.contains(first) == true)
+    {
+        const QString second = name.mid(dashPos + 1, hashPos - dashPos - 1);
+        if (second.size() == COUNTRY_CODE_LENGTH)
+        {
+            return second;
+        }
+    }
+    return first;
 }

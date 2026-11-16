@@ -3,7 +3,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QStandardPaths>
-#include <ranges>
+#include <algorithm>
 #include "favoritesManager.h"
 #include "jsonFile.h"
 
@@ -47,8 +47,7 @@ void FavoritesManager::add(const QString& countryCode,
                             const QString& countryName,
                             const QString& city)
 {
-    if (isFavorite(countryCode, city))
-        return;
+    if (isFavorite(countryCode, city) == true) return;
 
     FavoriteEntry e;
     e.countryCode = countryCode;
@@ -67,8 +66,7 @@ void FavoritesManager::remove(const QString& countryCode, const QString& city)
             && e.city.compare(city, Qt::CaseInsensitive) == 0;
     });
 
-    if (it == m_entries.end())
-        return;
+    if (it == m_entries.end()) return;
 
     m_entries.erase(it);
     save();
@@ -79,7 +77,7 @@ void FavoritesManager::toggle(const QString& countryCode,
                                const QString& countryName,
                                const QString& city)
 {
-    if (isFavorite(countryCode, city))
+    if (isFavorite(countryCode, city) == true)
     {
         remove(countryCode, city);
     }
@@ -91,8 +89,7 @@ void FavoritesManager::toggle(const QString& countryCode,
 
 void FavoritesManager::clear()
 {
-    if (m_entries.isEmpty())
-        return;
+    if (m_entries.isEmpty() == true) return;
     m_entries.clear();
     save();
     emit changed();
@@ -101,14 +98,13 @@ void FavoritesManager::clear()
 void FavoritesManager::load()
 {
     QFile f(favoritesFilePath());
-    if (f.open(QIODevice::ReadOnly) == false)
-        return;
+    if (f.open(QIODevice::ReadOnly) == false) return;
 
     const QJsonArray arr = QJsonDocument::fromJson(f.readAll()).array();
     f.close();
 
     m_entries.clear();
-    for (const auto& val : arr)
+    for (const QJsonValue& val : arr)
     {
         const QJsonObject obj = val.toObject();
         FavoriteEntry e;
@@ -125,7 +121,7 @@ void FavoritesManager::load()
 void FavoritesManager::save() const
 {
     QJsonArray arr;
-    for (const auto& e : m_entries)
+    for (const FavoriteEntry& e : m_entries)
     {
         QJsonObject obj;
         obj[QStringLiteral("country_code")] = e.countryCode;

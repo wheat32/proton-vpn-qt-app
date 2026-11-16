@@ -1,14 +1,12 @@
 #include "aboutDialog.h"
 
+#include "../appVersion.h"
+#include "../cli/platformUtils.h"
+
 #include <QDialogButtonBox>
-#include <QFile>
 #include <QFrame>
 #include <QGridLayout>
-// ReSharper disable once CppUnusedIncludeDirective
-#include <QJsonDocument> // Ignore unused include warning; we do use QJsonDocument
-#include <QJsonObject>
 #include <QLabel>
-#include "../cli/platformUtils.h"
 #include <QPushButton>
 #include <QTextBrowser>
 #include <QVersionNumber>
@@ -24,27 +22,24 @@ constexpr int VERSION_GRID_BOT_MARGIN  = 8;
 constexpr int VERSION_GRID_H_SPACING   = 8;
 constexpr int VERSION_GRID_V_SPACING   = 4;
 constexpr int VERSION_COL_STRETCH      = 1;
+// The version table: one row per fact, its name in column 0.
+constexpr int VERSION_VALUE_COL        = 1;
+constexpr int VERSION_ROW_APP          = 0;
+constexpr int VERSION_ROW_TESTED_CLI   = 1;
+constexpr int VERSION_ROW_QT           = 2;
+constexpr int VERSION_ROW_PACKAGE      = 3;
+constexpr int VERSION_ROW_INSTALLED    = 4;
 } // namespace
 
 AboutDialog::AboutDialog(const QString& installedCliVersion, QWidget* parent)
     : QDialog(parent)
 {
-    // Load versions from the embedded version.json resource
-    QString appVersion      = QStringLiteral("unknown");
-    QString cliVersionMin;
-    QString cliVersionMax;
-    QFile vf(QStringLiteral(":/version.json"));
-    if (vf.open(QIODevice::ReadOnly))
-    {
-        const QJsonObject obj = QJsonDocument::fromJson(vf.readAll()).object();
-        vf.close();
-        if (obj.contains(QStringLiteral("app_version")))
-        {
-            appVersion = obj[QStringLiteral("app_version")].toString();
-        }
-        cliVersionMin = obj.value(QStringLiteral("cli_version_tested_min")).toString();
-        cliVersionMax = obj.value(QStringLiteral("cli_version_tested_max")).toString();
-    }
+    // Versions from the embedded version.json resource
+    const AppVersion::Info& version = AppVersion::embedded();
+    const QString appVersion    = version.appVersion.isEmpty() == true ? QStringLiteral("unknown")
+                                                                       : version.appVersion;
+    const QString cliVersionMin = version.cliTestedMin;
+    const QString cliVersionMax = version.cliTestedMax;
 
     // Build the "min-max" display string, e.g. "1.0.0-1.0.1"
     QString testedVersionStr;
@@ -92,7 +87,7 @@ AboutDialog::AboutDialog(const QString& installedCliVersion, QWidget* parent)
     versionGrid->setContentsMargins(0, VERSION_GRID_TOP_MARGIN, 0, VERSION_GRID_BOT_MARGIN);
     versionGrid->setHorizontalSpacing(VERSION_GRID_H_SPACING);
     versionGrid->setVerticalSpacing(VERSION_GRID_V_SPACING);
-    versionGrid->setColumnStretch(1, VERSION_COL_STRETCH);
+    versionGrid->setColumnStretch(VERSION_VALUE_COL, VERSION_COL_STRETCH);
 
     auto makeKey = [&](const QString& text) -> QLabel*
     {
@@ -101,17 +96,20 @@ AboutDialog::AboutDialog(const QString& installedCliVersion, QWidget* parent)
         return l;
     };
 
-    versionGrid->addWidget(makeKey(tr("App version:")),        0, 0);
-    versionGrid->addWidget(new QLabel(appVersion, versionWidget),          0, 1);
+    versionGrid->addWidget(makeKey(tr("App version:")), VERSION_ROW_APP, 0);
+    versionGrid->addWidget(new QLabel(appVersion, versionWidget), VERSION_ROW_APP, VERSION_VALUE_COL);
 
-    versionGrid->addWidget(makeKey(tr("Tested against CLI:")), 1, 0);
-    versionGrid->addWidget(new QLabel(testedVersionStr, versionWidget),    1, 1);
+    versionGrid->addWidget(makeKey(tr("Tested against CLI:")), VERSION_ROW_TESTED_CLI, 0);
+    versionGrid->addWidget(new QLabel(testedVersionStr, versionWidget),
+                           VERSION_ROW_TESTED_CLI, VERSION_VALUE_COL);
 
-    versionGrid->addWidget(makeKey(tr("Qt version:")),         2, 0);
-    versionGrid->addWidget(new QLabel(QStringLiteral(QT_VERSION_STR),      versionWidget), 2, 1);
+    versionGrid->addWidget(makeKey(tr("Qt version:")), VERSION_ROW_QT, 0);
+    versionGrid->addWidget(new QLabel(QStringLiteral(QT_VERSION_STR), versionWidget),
+                           VERSION_ROW_QT, VERSION_VALUE_COL);
 
-    versionGrid->addWidget(makeKey(tr("Package:")),            3, 0);
-    versionGrid->addWidget(new QLabel(packageTypeName(), versionWidget), 3, 1);
+    versionGrid->addWidget(makeKey(tr("Package:")), VERSION_ROW_PACKAGE, 0);
+    versionGrid->addWidget(new QLabel(packageTypeName(), versionWidget),
+                           VERSION_ROW_PACKAGE, VERSION_VALUE_COL);
 
     // Installed CLI version – highlighted only when outside the tested range
     if (installedCliVersion.isEmpty() == false)
@@ -142,8 +140,8 @@ AboutDialog::AboutDialog(const QString& installedCliVersion, QWidget* parent)
                 QStringLiteral("color: %1; font-weight: bold;").arg(color));
             valLabel->setToolTip(tooltip);
 
-            versionGrid->addWidget(makeKey(tr("Installed CLI:")), 4, 0);
-            versionGrid->addWidget(valLabel,                      4, 1);
+            versionGrid->addWidget(makeKey(tr("Installed CLI:")), VERSION_ROW_INSTALLED, 0);
+            versionGrid->addWidget(valLabel, VERSION_ROW_INSTALLED, VERSION_VALUE_COL);
         }
     }
 

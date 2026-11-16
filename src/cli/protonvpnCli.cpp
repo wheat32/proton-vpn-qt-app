@@ -6,6 +6,8 @@
 #include "../vpnManager.h"
 
 #include "../debug.h"
+#include "cliDisconnect.h"
+#include "cliInstallCheck.h"
 #include "cliNoiseFilter.h"
 #include "cliSession.h"
 #include "cliSettings.h"
@@ -40,6 +42,11 @@ constexpr int LOGIN_CHECK_RETRIES = 5;
 constexpr int MIN_COUNTRY_PARTS          = 2;
 constexpr int NETWORK_READY_CHECK_RETRIES = 5;
 constexpr int AUTO_CONNECT_RETRIES        = 5;
+// A connect that is tried once (every connect but the startup auto-connect).
+constexpr int NO_RETRIES                  = 0;
+// Retries back off linearly: the first waits this long, the second twice as
+// long, and so on.
+constexpr int RETRY_BACKOFF_STEP_MS       = 1000;
 
 // `protonvpn info` and `protonvpn config list` normally answer in well under a
 // second. The limit is generous because the CLI may be legitimately waiting
@@ -64,22 +71,6 @@ constexpr int SIGNIN_USERNAME_ARG = 1;
 std::pair<QString, QStringList> buildCliCommand(const QStringList& args)
 {
     return buildHostCommand(QStringLiteral("protonvpn"), args);
-}
-
-// True when the output contains the CLI's own "Disconnected." confirmation.
-//
-// `protonvpn disconnect` prints it only once the tunnel is down, but CLI 1.0.3
-// can still exit non-zero afterwards: it then waits on a background location
-// refresh that api-core starts on disconnect, and that has been seen to end
-// the process with exit code 1 and no output at all. The line is therefore a
-// more reliable answer to "did the disconnect happen?" than the exit code.
-bool reportsDisconnected(const QString& out)
-{
-    const QStringList lines = out.split(QLatin1Char('\n'));
-    return std::ranges::any_of(lines, [](const QString& line)
-    {
-        return line.trimmed() == QLatin1String("Disconnected.");
-    });
 }
 
 // The rows of `protonvpn cities list` as (city, features), e.g.
@@ -240,7 +231,7 @@ void VpnManager::checkInstalled()
                 *reported = true;
                 const QString out = QString::fromUtf8(process->readAllStandardOutput());
                 const QString err = QString::fromUtf8(process->readAllStandardError());
-                const bool installed = out.isEmpty() == false || err.isEmpty() == false;
+                const bool installed = CliInstallCheck::ranCli(out, err);
                 process->deleteLater();
                 DBG_CLI(installed ? QStringLiteral("protonvpn CLI found.") : QStringLiteral("protonvpn CLI NOT found."));
                 emit installedResult(installed);
@@ -301,7 +292,6 @@ void VpnManager::checkLoginStatus(int retriesLeft)
             {
                 m_signedIn = true;
                 startStatusMonitor();
-                fetchAccountType();
                 fetchSettings();
                 emit loginStatusResult(true, accountVal);
             }
@@ -322,7 +312,7 @@ void VpnManager::checkLoginStatus(int retriesLeft)
         if (retriesLeft > 0)
         {
             const int attempt = LOGIN_CHECK_RETRIES - retriesLeft + 1;
-            const int delayMs = attempt * 1000;
+            const int delayMs = attempt * RETRY_BACKOFF_STEP_MS;
             DBG_CLI(QStringLiteral("Retrying in %1 ms...").arg(delayMs));
             QTimer::singleShot(delayMs, this, [this, retriesLeft]()
             {
@@ -542,7 +532,6 @@ void VpnManager::finishSignin(const bool ok, const QString& error)
     {
         m_signedIn = true;
         startStatusMonitor();
-        fetchAccountType();
         fetchSettings();
     }
     emit loginFinished(ok, error);
@@ -552,18 +541,21 @@ void VpnManager::signOut()
 {
     DBG_CLI(QStringLiteral("Signing out..."));
     m_signedIn = false;
+    // Whatever connect is waiting or running belongs to the session that is
+    // ending: its result is dropped and nothing held is started.
+    m_connectQueue.supersede();
+    m_connectQueue.dropHeld();
     stopStatusMonitor();
     runCommand({QStringLiteral("signout")}, [this](int exitCode, const QString&, const QString&)
     {
         DBG_CLI(exitCode == 0 ? QStringLiteral("Sign-out succeeded.") : QStringLiteral("Sign-out failed (exit=") + QString::number(exitCode) + QStringLiteral(")."));
-        m_state = VpnState::Disconnected;
         emit signOutFinished(exitCode == 0);
         // Announce the state, not just record it. The pages still show the last
         // state they were sent - usually Error, when an expired session is what
         // triggered this sign-out - and after the next sign-in the status
         // monitor reports Disconnected, which already matches m_state, so no
         // change would be emitted and the stale error would stay on screen.
-        emit connectionStateChanged(m_state, QString());
+        announceState(VpnState::Disconnected, QString());
     });
 }
 
@@ -573,13 +565,35 @@ void VpnManager::signOut()
 
 void VpnManager::connectVpn(const QString& country, const QString& city)
 {
-    beginConnect(country, city, QString());
+    beginConnect({.country = country, .city = city, .server = QString()});
 }
 
-void VpnManager::beginConnect(const QString& country, const QString& city, const QString& server)
+void VpnManager::beginConnect(const ConnectRequest& request)
 {
-    enterConnecting(QStringLiteral("Connecting to VPN"), country, city, server);
-    issueConnect(country, city, 0, server);
+    // Calls off whatever an earlier request still has waiting (a startup
+    // auto-connect's network check or retry).
+    const int ticket = m_connectQueue.supersede();
+    enterConnecting(QStringLiteral("Connecting to VPN"), request.country, request.city, request.server);
+
+    if (m_connectQueue.commandRunning() == true)
+    {
+        // One CLI connect or disconnect at a time: this one starts when the
+        // running one has finished, in place of announcing its result.
+        DBG_CLI(QStringLiteral("A connect or disconnect is still running - this connect starts when it has finished."));
+        m_connectQueue.hold(request);
+        return;
+    }
+    issueConnect(request, NO_RETRIES, ticket);
+}
+
+bool VpnManager::startHeldConnect()
+{
+    const std::optional<ConnectRequest> held = m_connectQueue.takeHeld();
+    if (held.has_value() == false) return false;
+
+    // beginConnect() already recorded the destination and entered Connecting.
+    issueConnect(*held, NO_RETRIES, m_connectQueue.supersede());
+    return true;
 }
 
 void VpnManager::enterConnecting(const QString& action, const QString& country, const QString& city,
@@ -597,19 +611,25 @@ void VpnManager::enterConnecting(const QString& action, const QString& country, 
     m_lastConnectCountry = country;
     m_lastConnectCity    = city;
     m_lastConnectServer  = server;
-    m_connectedServer.clear();
 
-    m_state = VpnState::Connecting;
-    emit connectionStateChanged(m_state, QString());
+    announceState(VpnState::Connecting, QString());
 }
 
 void VpnManager::startupAutoConnect(const QString& country, const QString& city)
 {
+    const int ticket = m_connectQueue.supersede();
     enterConnecting(QStringLiteral("Auto-connecting to VPN on startup"), country, city, QString());
 
-    checkNetworkReady(NETWORK_READY_CHECK_RETRIES, [this, country, city]()
+    checkNetworkReady(NETWORK_READY_CHECK_RETRIES, [this, country, city, ticket]()
     {
-        issueConnect(country, city, AUTO_CONNECT_RETRIES);
+        // The user connected somewhere, or disconnected, while the network
+        // was coming up: that request stands and this one is dropped.
+        if (m_connectQueue.isCurrent(ticket) == false)
+        {
+            DBG_CLI(QStringLiteral("Startup auto-connect dropped: a newer request replaced it."));
+            return;
+        }
+        issueConnect({.country = country, .city = city, .server = QString()}, AUTO_CONNECT_RETRIES, ticket);
     });
 }
 
@@ -645,7 +665,7 @@ void VpnManager::checkNetworkReady(int retriesLeft, const std::function<void()>&
         }
 
         const int attempt = NETWORK_READY_CHECK_RETRIES - retriesLeft + 1;
-        const int delayMs = attempt * 1000;
+        const int delayMs = attempt * RETRY_BACKOFF_STEP_MS;
         DBG_CLI(QStringLiteral("Network not ready yet (nmcli state: '") + out +
                 QStringLiteral("'), retrying in ") + QString::number(delayMs) + QStringLiteral(" ms..."));
         QTimer::singleShot(delayMs, this, [this, retriesLeft, onReady]()
@@ -673,32 +693,38 @@ void VpnManager::checkNetworkReady(int retriesLeft, const std::function<void()>&
     process->start(program, fullArgs);
 }
 
-void VpnManager::issueConnect(const QString& country, const QString& city, int retriesLeft,
-                              const QString& server)
+void VpnManager::issueConnect(const ConnectRequest& request, const int retriesLeft, const int ticket)
 {
     QStringList args{QStringLiteral("connect")};
-    if (server.isEmpty() == false)
+    if (request.server.isEmpty() == false)
     {
-        args << server;
+        args << request.server;
     }
     else
     {
-        if (country.isEmpty() == false)
+        if (request.country.isEmpty() == false)
         {
-            args << QStringLiteral("--country") << country;
+            args << QStringLiteral("--country") << request.country;
         }
-        if (city.isEmpty() == false)
+        if (request.city.isEmpty() == false)
         {
-            args << QStringLiteral("--city") << city;
+            args << QStringLiteral("--city") << request.city;
         }
     }
 
-    runCommand(args, [this, country, city, retriesLeft, server](int exitCode, const QString& out, const QString& err)
+    m_connectQueue.commandStarted();
+    runCommand(args, [this, request, retriesLeft, ticket](int exitCode, const QString& out, const QString& err)
     {
+        m_connectQueue.commandFinished();
+
+        // A newer connect was asked for meanwhile: it replaces this result.
+        if (startHeldConnect() == true) return;
+        // Replaced by a disconnect or a sign-out, which report for themselves.
+        if (m_connectQueue.isCurrent(ticket) == false) return;
+
         if (exitCode == 0)
         {
             DBG_CLI(QStringLiteral("VPN connected successfully."));
-            m_state = VpnState::Connected;
             // Strip noise / port-forwarding guidelines from CLI output.
             QStringList lines = CliNoise::strip(out.split(QLatin1Char('\n')));
 
@@ -707,7 +733,8 @@ void VpnManager::issueConnect(const QString& country, const QString& city, int r
                 lines.removeFirst();
             }
 
-            emit connectionStateChanged(m_state, lines.join(QLatin1Char('\n')));
+            announceState(VpnState::Connected, lines.join(QLatin1Char('\n')));
+            refreshStatusNow();
             return;
         }
 
@@ -716,32 +743,44 @@ void VpnManager::issueConnect(const QString& country, const QString& city, int r
         if (retriesLeft > 0 && CliSession::requiresSignIn(out + QLatin1Char('\n') + err) == false)
         {
             const int attempt = AUTO_CONNECT_RETRIES - retriesLeft + 1;
-            const int delayMs = attempt * 1000;
+            const int delayMs = attempt * RETRY_BACKOFF_STEP_MS;
             DBG_CLI(QStringLiteral("VPN connect attempt failed (exit=") + QString::number(exitCode) +
                     QStringLiteral("), retrying in ") + QString::number(delayMs) + QStringLiteral(" ms..."));
-            QTimer::singleShot(delayMs, this, [this, country, city, retriesLeft, server]()
+            QTimer::singleShot(delayMs, this, [this, request, retriesLeft, ticket]()
             {
-                issueConnect(country, city, retriesLeft - 1, server);
+                // Replaced while waiting to retry.
+                if (m_connectQueue.isCurrent(ticket) == false) return;
+                issueConnect(request, retriesLeft - 1, ticket);
             });
             return;
         }
 
-        DBG_CLI(QStringLiteral("VPN connection failed (exit=") + QString::number(exitCode) + QStringLiteral("): ") + (err.isEmpty() ? out : err));
-        m_state = VpnState::Error;
-        emit connectionStateChanged(m_state, err.isEmpty() ? out : err);
-        emit errorOccurred(err.isEmpty() ? out : err);
+        const QString error = err.isEmpty() ? out : err;
+        DBG_CLI(QStringLiteral("VPN connection failed (exit=") + QString::number(exitCode) + QStringLiteral("): ") + error);
+        announceState(VpnState::Error, error);
+        refreshStatusNow();
     });
 }
 
 void VpnManager::disconnectVpn()
 {
     DBG_CLI(QStringLiteral("Disconnecting VPN..."));
-    m_state = VpnState::Disconnecting;
-    emit connectionStateChanged(m_state, QString());
+    // Calls off a connect that is still waiting; one that is held is dropped.
+    const int ticket = m_connectQueue.supersede();
+    m_connectQueue.dropHeld();
+    announceState(VpnState::Disconnecting, QString());
 
-    runCommand({QStringLiteral("disconnect")}, [this](const int exitCode, const QString& out, const QString& err)
+    m_connectQueue.commandStarted();
+    runCommand({QStringLiteral("disconnect")}, [this, ticket](const int exitCode, const QString& out, const QString& err)
     {
-        if (exitCode == 0 || reportsDisconnected(out) == true)
+        m_connectQueue.commandFinished();
+
+        // A connect was asked for while disconnecting: go straight on to it.
+        if (startHeldConnect() == true) return;
+        // Signed out meanwhile; the sign-out announces the state.
+        if (m_connectQueue.isCurrent(ticket) == false) return;
+
+        if (CliDisconnect::succeeded(exitCode, out) == true)
         {
             if (exitCode != 0)
             {
@@ -749,16 +788,15 @@ void VpnManager::disconnectVpn()
                         QString::number(exitCode) + QStringLiteral("; treating it as successful."));
             }
             DBG_CLI(QStringLiteral("VPN disconnected successfully."));
-            m_state = VpnState::Disconnected;
-            emit connectionStateChanged(m_state, out);
+            announceState(VpnState::Disconnected, out);
         }
         else
         {
-            DBG_CLI(QStringLiteral("VPN disconnect failed (exit=") + QString::number(exitCode) + QStringLiteral("): ") + (err.isEmpty() ? out : err));
-            m_state = VpnState::Error;
-            emit connectionStateChanged(m_state, err.isEmpty() ? out : err);
-            emit errorOccurred(err.isEmpty() ? out : err);
+            const QString error = err.isEmpty() ? out : err;
+            DBG_CLI(QStringLiteral("VPN disconnect failed (exit=") + QString::number(exitCode) + QStringLiteral("): ") + error);
+            announceState(VpnState::Error, error);
         }
+        refreshStatusNow();
     });
 }
 
@@ -796,32 +834,58 @@ void VpnManager::applyConfigValueAndReconnect(const QString& key, const QString&
         city.clear();
     }
 
-    m_state = VpnState::Disconnecting;
-    emit connectionStateChanged(m_state, QString());
+    const int ticket = m_connectQueue.supersede();
+    m_connectQueue.dropHeld();
+    announceState(VpnState::Disconnecting, QString());
 
+    m_connectQueue.commandStarted();
     runCommand({QStringLiteral("disconnect")},
-               [this, key, value, country, city, server](int exitCode, const QString&, const QString& err)
+               [this, key, value, country, city, server, ticket](int exitCode, const QString& out, const QString& err)
     {
-        if (exitCode != 0)
+        // Replaced by a sign-out or a plain disconnect, which report for
+        // themselves. A connect that is being held is different: the setting
+        // is still applied, and that connect follows instead of the reconnect.
+        if (m_connectQueue.isCurrent(ticket) == false && m_connectQueue.hasHeld() == false)
         {
-            m_state = VpnState::Error;
-            emit connectionStateChanged(m_state, err);
-            emit errorOccurred(err);
+            m_connectQueue.commandFinished();
             return;
         }
 
-        m_state = VpnState::Disconnected;
-        emit connectionStateChanged(m_state, QString());
+        if (CliDisconnect::succeeded(exitCode, out) == false)
+        {
+            m_connectQueue.commandFinished();
+            const QString error = err.isEmpty() ? out : err;
+            DBG_CLI(QStringLiteral("Disconnect before changing '") + key + QStringLiteral("' failed (exit=") +
+                    QString::number(exitCode) + QStringLiteral("): ") + error);
+            // A connect asked for meanwhile still goes ahead.
+            if (startHeldConnect() == true) return;
+            announceState(VpnState::Error, error);
+            refreshStatusNow();
+            return;
+        }
+
+        if (m_connectQueue.hasHeld() == false)
+        {
+            announceState(VpnState::Disconnected, QString());
+        }
 
         QStringList args{QStringLiteral("config"), QStringLiteral("set")};
         args << key;
         args << value.split(QLatin1Char(' '), Qt::SkipEmptyParts);
 
-        runCommand(args, [this, country, city, server](int, const QString& out, const QString& err2)
+        // Still one command at a time: the queue stays busy through the
+        // setting change, so a connect asked for now waits for it too.
+        runCommand(args, [this, country, city, server, ticket](int, const QString& out2, const QString& err2)
         {
-            emit configApplied((out + QLatin1Char('\n') + err2).trimmed());
+            m_connectQueue.commandFinished();
+            emit configApplied((out2 + QLatin1Char('\n') + err2).trimmed());
             fetchSettings();
-            beginConnect(country, city, server);
+
+            // The user picked another location meanwhile: that one, not the
+            // previous connection.
+            if (startHeldConnect() == true) return;
+            if (m_connectQueue.isCurrent(ticket) == false) return;
+            beginConnect({.country = country, .city = city, .server = server});
         });
     });
 }
@@ -836,7 +900,10 @@ void VpnManager::fetchCountries()
                [this](int exitCode, const QString& out, const QString& err)
     {
         if (exitCode != 0)
+        {
+            emit countriesFetchFailed();
             return;
+        }
         QMap<QString, QString> countries;
         // Rows are "Name   Code".
         for (const QString& row : CliTable::rows(out + QLatin1Char('\n') + err))
@@ -856,7 +923,12 @@ void VpnManager::fetchCities(const QString& countryCode)
                [this, countryCode](int exitCode, const QString& out, const QString& err)
                {
                    if (exitCode != 0)
-                       return; // not authenticated or other error - don't overwrite with an empty list
+                   {
+                       // Not authenticated or another error: the cached list,
+                       // if any, is not overwritten with an empty one.
+                       emit citiesFetchFailed(countryCode);
+                       return;
+                   }
                    const QList<QPair<QString, QString>> cities = parseCities(out + QLatin1Char('\n') + err);
                    m_cities.insert(countryCode, cities);
                    emit citiesReady(countryCode, cities);
@@ -869,8 +941,7 @@ void VpnManager::fetchCityFeatures(const QString& countryCode, const QString& ci
     runCommand({QStringLiteral("cities"), QStringLiteral("list"), countryCode},
                [city, callback](int exitCode, const QString& out, const QString& err)
                {
-                   if (exitCode != 0)
-                       return;
+                   if (exitCode != 0) return;
                    for (const auto& [name, features] : parseCities(out + QLatin1Char('\n') + err))
                    {
                        if (name.compare(city, Qt::CaseInsensitive) == 0)
@@ -896,25 +967,6 @@ void VpnManager::fetchInfo()
             result.insert(m.captured(1).trimmed(), m.captured(2).trimmed());
         }
         emit infoReady(result);
-    });
-}
-
-void VpnManager::fetchAccountType()
-{
-    runCommand({QStringLiteral("config"), QStringLiteral("list")},
-               [this](int exitCode, const QString& out, const QString& err)
-    {
-        // Nothing to classify: keep the current account type rather than
-        // falling through to the Plus default below.
-        if (exitCode == CLI_EXIT_FAILED_TO_START) return;
-
-        const QString combined = out + QLatin1Char('\n') + err;
-        const AccountType type =
-            combined.contains(QStringLiteral("To upgrade to VPN Plus"), Qt::CaseInsensitive)
-            ? AccountType::Free
-            : AccountType::Plus;
-        m_accountType = type;
-        emit accountTypeReady(type);
     });
 }
 
@@ -962,10 +1014,21 @@ void VpnManager::applyConfigValue(const QString& key, const QString& value)
 void VpnManager::fetchSettings()
 {
     runCommand({QStringLiteral("config"), QStringLiteral("list")},
-               [this](const int exitCode, const QString& out, const QString&)
+               [this](const int exitCode, const QString& out, const QString& err)
     {
         QMap<QString, QString> settings = CliSettings::parseConfigList(out);
-        if (exitCode != 0 || settings.isEmpty() == true)
+        const bool answered = exitCode == 0 && settings.isEmpty() == false;
+        if (answered == true)
+        {
+            // The same output tells the plan, so no second `config list` is
+            // run for it. A CLI that failed says nothing about the plan, and
+            // the account type stays what it was.
+            m_accountType = CliSettings::offersPlusUpgrade(out + QLatin1Char('\n') + err) == true
+                            ? AccountType::Free
+                            : AccountType::Plus;
+            emit accountTypeReady(accountType());
+        }
+        if (answered == false)
         {
             // The CLI could not answer (not signed in, or it failed): the file
             // at least has every setting the user has changed.

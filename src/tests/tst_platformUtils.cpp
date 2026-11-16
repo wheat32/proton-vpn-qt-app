@@ -63,6 +63,51 @@ private slots:
                  PlatformUtils::Detail::quoteExecArgument(QCoreApplication::applicationFilePath()));
     }
 
+    //  Autostart entry location
+
+    void autostartDirFor_nativeInstall_usesConfigLocation()
+    {
+        QCOMPARE(PlatformUtils::Detail::autostartDirFor(false, QStringLiteral("/home/me"),
+                                                        QStringLiteral("/home/me/.config")),
+                 QStringLiteral("/home/me/.config/autostart"));
+    }
+
+    void autostartDirFor_flatpak_usesHostAutostartDirectory()
+    {
+        // The sandbox's config location is where the entry used to go, and
+        // where no desktop looks for it.
+        const QString sandboxConfig = QStringLiteral("/home/me/.var/app/io.github.wheat32.ProtonVPNQt/config");
+
+        QCOMPARE(PlatformUtils::Detail::autostartDirFor(true, QStringLiteral("/home/me"), sandboxConfig),
+                 QStringLiteral("/home/me/.config/autostart"));
+    }
+
+    //  Single-instance lock location
+
+    void singleInstanceLockPathFor_runtimeDir_isPerUser()
+    {
+        // Not the shared temp directory: there a second user on the machine
+        // found the first user's lock.
+        QCOMPARE(PlatformUtils::Detail::singleInstanceLockPathFor(QStringLiteral("/run/user/1000"), QString(),
+                                                                  QStringLiteral("/tmp")),
+                 QStringLiteral("/run/user/1000/proton-vpn-qt-app.lock"));
+    }
+
+    void singleInstanceLockPathFor_flatpakSharedDir_winsOverRuntimeDir()
+    {
+        QCOMPARE(PlatformUtils::Detail::singleInstanceLockPathFor(
+                     QStringLiteral("/run/user/1000"),
+                     QStringLiteral("/run/user/1000/app/io.github.wheat32.ProtonVPNQt"),
+                     QStringLiteral("/tmp")),
+                 QStringLiteral("/run/user/1000/app/io.github.wheat32.ProtonVPNQt/proton-vpn-qt-app.lock"));
+    }
+
+    void singleInstanceLockPathFor_noRuntimeDir_fallsBackToTemp()
+    {
+        QCOMPARE(PlatformUtils::Detail::singleInstanceLockPathFor(QString(), QString(), QStringLiteral("/tmp")),
+                 QStringLiteral("/tmp/proton-vpn-qt-app.lock"));
+    }
+
     void packageTypeName_reflectsEnvironment()
     {
         QCOMPARE(packageTypeName(), QStringLiteral("System"));

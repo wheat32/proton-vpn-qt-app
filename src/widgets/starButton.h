@@ -31,7 +31,7 @@ constexpr int STAR_FILLED_R = 0xFF;
 constexpr int STAR_FILLED_G = 0xD2;
 constexpr int STAR_FILLED_B = 0x4A;
 
-// Empty star: muted purple-grey #777799
+// Empty star: muted purple-gray #777799
 constexpr int STAR_EMPTY_R = 0x77;
 constexpr int STAR_EMPTY_G = 0x77;
 constexpr int STAR_EMPTY_B = 0x99;
@@ -39,6 +39,9 @@ constexpr int STAR_EMPTY_B = 0x99;
 
 namespace StarButtonDetail
 {
+// Dynamic property holding the state a star button currently shows.
+constexpr const char* FAVORITE_PROPERTY = "shownAsFavorite";
+
 inline QIcon starIcon(const QString& resourcePath, const QColor& color)
 {
     using namespace StarButtonConstants;
@@ -71,6 +74,10 @@ inline QToolButton* makeStarButton(const QString& countryCode,
     auto updateIcon = [btn, countryCode, city]()
     {
         const bool fav = FavoritesManager::instance().isFavorite(countryCode, city);
+        // Every star hears about every change; only the one it is about redraws.
+        const QVariant shown = btn->property(StarButtonDetail::FAVORITE_PROPERTY);
+        if (shown.isValid() == true && shown.toBool() == fav) return;
+        btn->setProperty(StarButtonDetail::FAVORITE_PROPERTY, fav);
         if (fav == true)
         {
             btn->setIcon(StarButtonDetail::starIcon(QStringLiteral(":/assets/star-fill.svg"),

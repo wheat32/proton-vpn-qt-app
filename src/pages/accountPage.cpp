@@ -113,7 +113,7 @@ void AccountPage::refresh()
     m_nameLabel->setText(tr("\u280b Loading\u2026"));
     m_spinnerTimer->start();
     m_manager->fetchInfo();
-    m_manager->fetchAccountType();
+    m_manager->fetchSettings(); // also reports the plan
 }
 
 void AccountPage::onInfoReady(const QMap<QString, QString>& info) const

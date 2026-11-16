@@ -17,7 +17,8 @@ export APPDIR
 export PATH="${APPDIR}/usr/share/protonvpn:${PATH}"
 
 # ── Qt runtime ────────────────────────────────────────────────────────────────
-export LD_LIBRARY_PATH="${APPDIR}/usr/lib:${LD_LIBRARY_PATH:-}"
+# No trailing ":" when LD_LIBRARY_PATH is unset: an empty entry means the current directory.
+export LD_LIBRARY_PATH="${APPDIR}/usr/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 
 # Bundled Qt plugins take priority.  System Qt6 plugin paths are appended so
 # the host desktop's style plugins (e.g. Breeze on KDE Plasma) are also

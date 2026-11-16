@@ -27,11 +27,11 @@ QuitDialog::QuitDialog(const bool portForwardingActive, QWidget* parent)
     setMinimumWidth(QUIT_DIALOG_MIN_WIDTH);
     setMinimumHeight(QUIT_DIALOG_MIN_HEIGHT);
 
-    auto* layout = new QVBoxLayout(this);
+    QVBoxLayout* layout = new QVBoxLayout(this);
     layout->setSpacing(QUIT_DIALOG_SPACING);
     layout->setContentsMargins(QUIT_DIALOG_MARGIN, QUIT_DIALOG_MARGIN, QUIT_DIALOG_MARGIN, QUIT_DIALOG_BOTTOM_MARGIN);
 
-    auto* msgLabel = new QLabel(
+    QLabel* msgLabel = new QLabel(
         QStringLiteral("%1<br>%2").arg(
             tr("The VPN is currently active.").toHtmlEscaped(),
             tr("What would you like to do before quitting?").toHtmlEscaped()),
@@ -42,7 +42,7 @@ QuitDialog::QuitDialog(const bool portForwardingActive, QWidget* parent)
 
     if (portForwardingActive)
     {
-        auto* pfLabel = new QLabel(
+        QLabel* pfLabel = new QLabel(
             QStringLiteral("<i>%1</i>").arg(
                 tr("Note: the forwarded port lease will lapse shortly after "
                    "the app closes, as the keep-alive loop will no longer be running.")
@@ -53,17 +53,17 @@ QuitDialog::QuitDialog(const bool portForwardingActive, QWidget* parent)
         layout->addWidget(pfLabel);
     }
 
-    auto* btnRow = new QHBoxLayout();
+    QHBoxLayout* btnRow = new QHBoxLayout();
     btnRow->setSpacing(QUIT_DIALOG_BTN_ROW_SPACING);
 
-    auto* cancelBtn = new QPushButton(tr("Cancel"), this);
+    QPushButton* cancelBtn = new QPushButton(tr("Cancel"), this);
     cancelBtn->setObjectName(QStringLiteral("secondaryButton"));
 
-    auto* leaveOnBtn = new QPushButton(tr("Leave VPN on"), this);
+    QPushButton* leaveOnBtn = new QPushButton(tr("Leave VPN on"), this);
     leaveOnBtn->setObjectName(QStringLiteral("leaveVpnOnButton"));
     leaveOnBtn->setDefault(true);
 
-    auto* disconnectBtn = new QPushButton(tr("Disconnect VPN"), this);
+    QPushButton* disconnectBtn = new QPushButton(tr("Disconnect VPN"), this);
     disconnectBtn->setObjectName(QStringLiteral("dangerButton"));
 
     // Uniform size: same height, equal width via stretch, reduced horizontal

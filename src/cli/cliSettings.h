@@ -50,6 +50,13 @@ inline QMap<QString, QString> parseConfigList(const QString& output)
     return settings;
 }
 
+// Whether `config list` ended with its note on upgrading to VPN Plus, which
+// the CLI prints for a free account only.
+inline bool offersPlusUpgrade(const QString& configListOutput)
+{
+    return configListOutput.contains(QStringLiteral("To upgrade to VPN Plus"), Qt::CaseInsensitive);
+}
+
 // The servers in a custom DNS value from `config list`:
 // "on  [1.1.1.1, 8.8.8.8]" -> {"1.1.1.1", "8.8.8.8"}. The CLI shows only the
 // first few, followed by "...", so `truncated` (when given) tells the caller

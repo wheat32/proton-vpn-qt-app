@@ -55,6 +55,20 @@ info()  { echo -e "${GREEN}[build-appimage]${NC} $*"; }
 warn()  { echo -e "${YELLOW}[build-appimage]${NC} $*"; }
 die()   { echo -e "${RED}[build-appimage] ERROR:${NC} $*" >&2; exit 1; }
 
+# -- Download helper -----------------------------------------------------------
+# Downloads to a temporary name first, so a failed download never leaves a
+# partial file that the next run would take for a finished one.
+download() {
+    local url="$1" dest="$2"
+    local partial="${dest}.part"
+    rm -f "${partial}"
+    if ! wget -q --show-progress -O "${partial}" "${url}"; then
+        rm -f "${partial}"
+        die "Download failed: ${url}"
+    fi
+    mv "${partial}" "${dest}"
+}
+
 # -- Target architecture -------------------------------------------------------
 # Each upstream names the same CPU differently, so map the host architecture to
 # every naming scheme this script needs in one place.
@@ -142,6 +156,7 @@ export PATH="${QT_DIR}/bin:${PATH}"
 info "Building ProtonVPN Qt App (Release)..."
 cmake -S "${SCRIPT_DIR}/src" -B "${BUILD_ROOT}/native" \
       -DCMAKE_BUILD_TYPE=Release -G Ninja \
+      -DBUILD_TESTING=OFF \
       -DCMAKE_PREFIX_PATH="${QT_DIR}" \
       -DCMAKE_C_FLAGS="-march=${MARCH}" \
       -DCMAKE_CXX_FLAGS="-march=${MARCH}"
@@ -170,11 +185,12 @@ DEB_URLS="${BUILD_ROOT}/protonvpn-deb-urls.txt"
 info "Resolving package URLs from ProtonVPN apt repo..."
 python3 "${SCRIPT_DIR}/appimage/fetch-cli-debs.py" "${CLI_VERSION}" "${DEB_ARCH}" > "${DEB_URLS}"
 
+# -s, not -f: an empty file is a failed download from before.
 while IFS= read -r url; do
     dest="${DEB_CACHE}/$(basename "${url}")"
-    if [[ ! -f "${dest}" ]]; then
+    if [[ ! -s "${dest}" ]]; then
         info "Downloading $(basename "${url}")..."
-        wget -q --show-progress -O "${dest}" "${url}"
+        download "${url}" "${dest}"
     fi
 done < "${DEB_URLS}"
 
@@ -247,8 +263,17 @@ sed -i "s|^Exec=.*|Exec=proton_vpn_qt|"  "${DESKTOP_DST}"
 sed -i "s|^Icon=.*|Icon=${APP_ID}|"      "${DESKTOP_DST}"
 
 cp "${SCRIPT_DIR}/proton-vpn-sign.svg" "${ICON_DIR}/${APP_ID}.svg"
+# appimagetool only looks for the AppStream metadata under its old .appdata.xml name.
+cp "${APPDIR}/usr/share/metainfo/${APP_ID}.metainfo.xml" \
+   "${APPDIR}/usr/share/metainfo/${APP_ID}.appdata.xml"
 cp "${DESKTOP_DST}"            "${APPDIR}/${APP_ID}.desktop"
 cp "${ICON_DIR}/${APP_ID}.svg" "${APPDIR}/${APP_ID}.svg"
+# appimagetool creates .DirIcon (the AppImage's file thumbnail) from a PNG named
+# after the desktop file's Icon= in the top level of the AppDir, and will
+# refuse to build without one. The PNG is a 256x256 render of the SVG; after
+# changing the SVG, regenerate it with:
+#   rsvg-convert -w 256 -h 256 proton-vpn-sign.svg -o appimage/io.github.wheat32.ProtonVPNQt.png
+cp "${SCRIPT_DIR}/appimage/${APP_ID}.png" "${APPDIR}/${APP_ID}.png"
 
 # -- Custom AppRun -------------------------------------------------------------
 info "Installing AppRun..."
@@ -268,12 +293,13 @@ declare -A TOOL_URLS=(
     ["${APPIMAGETOOL}"]="https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${APPIMAGE_ARCH}.AppImage"
 )
 
+# -s, not -f: an empty file is a failed download from before.
 for dest in "${!TOOL_URLS[@]}"; do
-    if [[ ! -f "${dest}" ]]; then
+    if [[ ! -s "${dest}" ]]; then
         info "Downloading $(basename "${dest}")..."
-        wget -q --show-progress -O "${dest}" "${TOOL_URLS[${dest}]}"
-        chmod +x "${dest}"
+        download "${TOOL_URLS[${dest}]}" "${dest}"
     fi
+    chmod +x "${dest}"
 done
 
 # -- Bundle Qt + gi shared libraries via linuxdeploy --------------------------
@@ -442,8 +468,13 @@ for asset in data['assets']:
     [[ -n "${PBS_URL}" ]] || die "Could not find python-build-standalone ${SYSTEM_PY_VER} asset"
     info "Downloading portable Python: $(basename "${PBS_URL}")..."
     mkdir -p "${PYTHON_CACHE}"
-    wget -q --show-progress -O "${PYTHON_CACHE}/python.tar.gz" "${PBS_URL}"
-    tar -xzf "${PYTHON_CACHE}/python.tar.gz" -C "${PYTHON_CACHE}"
+    download "${PBS_URL}" "${PYTHON_CACHE}/python.tar.gz"
+    # Unpacked beside the cache and moved in whole, so python/ never exists half unpacked.
+    rm -rf "${PYTHON_CACHE}/unpack"
+    mkdir -p "${PYTHON_CACHE}/unpack"
+    tar -xzf "${PYTHON_CACHE}/python.tar.gz" -C "${PYTHON_CACHE}/unpack"
+    mv "${PYTHON_CACHE}/unpack/python" "${PYTHON_CACHE}/python"
+    rmdir "${PYTHON_CACHE}/unpack"
 fi
 
 info "Installing portable Python into AppDir..."

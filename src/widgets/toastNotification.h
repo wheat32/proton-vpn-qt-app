@@ -85,7 +85,8 @@ public:
         raise();
 
         // Defer sizing/positioning so the layout has been resolved
-        QTimer::singleShot(0, this, [this]() {
+        QTimer::singleShot(0, this, [this]()
+        {
             adjustSize();
             reposition();
         });

@@ -25,13 +25,14 @@ RUNTIME_VERSION=""   # resolved dynamically from Flathub at runtime
 # ── Resolve latest KDE runtime version from Flathub ──────────────────────────
 resolve_runtime_version() {
     info "Querying Flathub for the latest ${RUNTIME} version..."
+    # "|| true": an empty result is reported by the check below, not by set -e.
     local latest
     latest=$(flatpak remote-ls --user --runtime --columns=ref flathub 2>/dev/null \
         | grep "^runtime/${RUNTIME}/x86_64/" \
         | sed "s|runtime/${RUNTIME}/x86_64/||" \
         | grep -E '^[0-9]+\.[0-9]+$' \
         | sort -V \
-        | tail -1)
+        | tail -1) || true
 
     if [[ -z "$latest" ]]; then
         die "Could not resolve the latest ${RUNTIME} version from Flathub. Are you online?"

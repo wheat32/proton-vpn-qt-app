@@ -15,6 +15,10 @@ public:
     // The VPN page's background globe: Auto follows the desktop's reduce-motion
     // preference (see MotionPreference), On and Off override it.
     enum class GlobeAnimation { Auto, On, Off };
+    // How often the app asks the CLI for the connection status in the
+    // background (see statusCheckSeconds()). It always asks right after a
+    // connect or disconnect and when the window is shown.
+    enum class StatusCheck { Frequent, Balanced, Relaxed, Off };
 
     static AppConfig &instance();
 
@@ -52,6 +56,13 @@ public:
     static QString globeAnimationName(GlobeAnimation value);
     // The reverse; anything unrecognized is Auto, the default.
     static GlobeAnimation globeAnimationFromName(const QString& name);
+    StatusCheck statusCheck() const;
+    // Single source of truth for the StatusCheck <-> config-string mapping.
+    static QString statusCheckName(StatusCheck value);
+    // The reverse; anything unrecognized is Balanced, the default.
+    static StatusCheck statusCheckFromName(const QString& name);
+    // Seconds between two background checks; STATUS_CHECK_NEVER for Off.
+    static int statusCheckSeconds(StatusCheck value);
     bool showLocationPicker() const;
     bool showFavoritesDropdown() const;
     // Whether the VPN page shows the Countries list beside it in a wide
@@ -85,6 +96,7 @@ public:
     void setTheme(Theme value);
     void setGlobeAnimation(GlobeAnimation value);
     void setGlobePauseWhenUnfocused(bool value);
+    void setStatusCheck(StatusCheck value);
     void setShowLocationPicker(bool value);
     void setShowFavoritesDropdown(bool value);
     void setShowCountriesSidebar(bool value);
@@ -105,6 +117,9 @@ public:
     static constexpr double SPLIT_RATIO_MIN     = 0.2;
     static constexpr double SPLIT_RATIO_MAX     = 1.0 / 3.0;
     static constexpr double SPLIT_RATIO_DEFAULT = SPLIT_RATIO_MAX;
+
+    // statusCheckSeconds() for StatusCheck::Off: no background checks.
+    static constexpr int STATUS_CHECK_NEVER = 0;
 
     // As many as the quick settings show without scrolling.
     static constexpr int QUICK_SETTINGS_MAX = 12;
@@ -132,6 +147,7 @@ private:
     Theme m_theme = Theme::System;
     GlobeAnimation m_globeAnimation = GlobeAnimation::Auto;
     bool m_globePauseWhenUnfocused = false;
+    StatusCheck m_statusCheck = StatusCheck::Balanced;
     bool m_showLocationPicker = true;
     bool m_showFavoritesDropdown = true;
     bool m_showCountriesSidebar = true;

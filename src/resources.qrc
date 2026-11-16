@@ -31,6 +31,7 @@
         <file alias="bug.svg">assets/bug.svg</file>
         <file alias="star.svg">assets/star.svg</file>
         <file alias="star-fill.svg">assets/star-fill.svg</file>
+        <file alias="clock-history.svg">assets/clock-history.svg</file>
         <file alias="arrow-bar-right.svg">assets/arrow-bar-right.svg</file>
         <file alias="arrow-bar-left.svg">assets/arrow-bar-left.svg</file>
         <file alias="box-arrow-up-right.svg">assets/box-arrow-up-right.svg</file>

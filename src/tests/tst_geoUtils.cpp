@@ -42,6 +42,30 @@ private slots:
                  GeoUtils::countryCodeToName(QStringLiteral("GB")));
     }
 
+    void protonCountryCode_unitedKingdom_isUk()
+    {
+        // The CLI rejects "GB" ("Invalid country code") and lists the country
+        // as "UK", so that is what a UK user's own country has to be.
+        QCOMPARE(GeoUtils::protonCountryCode(QStringLiteral("GB")), QStringLiteral("UK"));
+        QCOMPARE(GeoUtils::protonCountryCode(QStringLiteral("gb")), QStringLiteral("UK"));
+    }
+
+    void protonCountryCode_otherCodes_passThrough()
+    {
+        QCOMPARE(GeoUtils::protonCountryCode(QStringLiteral("UK")), QStringLiteral("UK"));
+        QCOMPARE(GeoUtils::protonCountryCode(QStringLiteral("US")), QStringLiteral("US"));
+        QCOMPARE(GeoUtils::protonCountryCode(QStringLiteral("CH")), QStringLiteral("CH"));
+        QVERIFY(GeoUtils::protonCountryCode(QString()).isEmpty());
+    }
+
+    void protonCountryCode_result_hasAFlagAndAName()
+    {
+        // The code handed to the CLI is also the one the UI looks up.
+        const QString code = GeoUtils::protonCountryCode(QStringLiteral("GB"));
+        QCOMPARE(GeoUtils::countryCodeToName(code), QStringLiteral("United Kingdom"));
+        QVERIFY(QFile::exists(QStringLiteral(":/flags/") + code.toLower()));
+    }
+
     // US states ---------------------------------------------------------------
 
     void usStateName_knownCode_returnsFullName()

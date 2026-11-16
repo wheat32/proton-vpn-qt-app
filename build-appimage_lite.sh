@@ -37,6 +37,20 @@ info()  { echo -e "${GREEN}[build-appimage-lite]${NC} $*"; }
 warn()  { echo -e "${YELLOW}[build-appimage-lite]${NC} $*"; }
 die()   { echo -e "${RED}[build-appimage-lite] ERROR:${NC} $*" >&2; exit 1; }
 
+# -- Download helper -----------------------------------------------------------
+# Downloads to a temporary name first, so a failed download never leaves a
+# partial file that the next run would take for a finished one.
+download() {
+    local url="$1" dest="$2"
+    local partial="${dest}.part"
+    rm -f "${partial}"
+    if ! wget -q --show-progress -O "${partial}" "${url}"; then
+        rm -f "${partial}"
+        die "Download failed: ${url}"
+    fi
+    mv "${partial}" "${dest}"
+}
+
 # -- Target architecture -------------------------------------------------------
 # Each upstream names the same CPU differently, so map the host architecture to
 # every naming scheme this script needs in one place.
@@ -118,6 +132,7 @@ export PATH="${QT_DIR}/bin:${PATH}"
 info "Building ProtonVPN Qt App (Release)..."
 cmake -S "${SCRIPT_DIR}/src" -B "${BUILD_ROOT}/native-lite" \
       -DCMAKE_BUILD_TYPE=Release -G Ninja \
+      -DBUILD_TESTING=OFF \
       -DCMAKE_PREFIX_PATH="${QT_DIR}" \
       -DCMAKE_C_FLAGS="-march=${MARCH}" \
       -DCMAKE_CXX_FLAGS="-march=${MARCH}"
@@ -138,8 +153,17 @@ sed -i "s|^Exec=.*|Exec=proton_vpn_qt|"  "${DESKTOP_DST}"
 sed -i "s|^Icon=.*|Icon=${APP_ID}|"      "${DESKTOP_DST}"
 
 cp "${SCRIPT_DIR}/proton-vpn-sign.svg" "${ICON_DIR}/${APP_ID}.svg"
+# appimagetool only looks for the AppStream metadata under its old .appdata.xml name.
+cp "${APPDIR}/usr/share/metainfo/${APP_ID}.metainfo.xml" \
+   "${APPDIR}/usr/share/metainfo/${APP_ID}.appdata.xml"
 cp "${DESKTOP_DST}"            "${APPDIR}/${APP_ID}.desktop"
 cp "${ICON_DIR}/${APP_ID}.svg" "${APPDIR}/${APP_ID}.svg"
+# appimagetool creates .DirIcon (the AppImage's file thumbnail) from a PNG named
+# after the desktop file's Icon= in the top level of the AppDir, and will
+# refuse to build without one. The PNG is a 256x256 render of the SVG; after
+# changing the SVG, regenerate it with:
+#   rsvg-convert -w 256 -h 256 proton-vpn-sign.svg -o appimage/io.github.wheat32.ProtonVPNQt.png
+cp "${SCRIPT_DIR}/appimage/${APP_ID}.png" "${APPDIR}/${APP_ID}.png"
 
 # -- Custom AppRun -------------------------------------------------------------
 info "Installing AppRun..."
@@ -159,12 +183,13 @@ declare -A TOOL_URLS=(
     ["${APPIMAGETOOL}"]="https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${APPIMAGE_ARCH}.AppImage"
 )
 
+# -s, not -f: an empty file is a failed download from before.
 for dest in "${!TOOL_URLS[@]}"; do
-    if [[ ! -f "${dest}" ]]; then
+    if [[ ! -s "${dest}" ]]; then
         info "Downloading $(basename "${dest}")..."
-        wget -q --show-progress -O "${dest}" "${TOOL_URLS[${dest}]}"
-        chmod +x "${dest}"
+        download "${TOOL_URLS[${dest}]}" "${dest}"
     fi
+    chmod +x "${dest}"
 done
 
 # -- Bundle Qt shared libraries ------------------------------------------------

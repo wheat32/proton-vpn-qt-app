@@ -1,10 +1,6 @@
 #include <QApplication>
 #include <QDBusConnection>
 #include <QDBusError>
-#include <QDir>
-#include <QFile>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QLockFile>
 #include <QLocale>
 #include <QMessageBox>
@@ -13,6 +9,7 @@
 #include <QSystemTrayIcon>
 #include <QTranslator>
 #include "appConfig.h"
+#include "appVersion.h"
 #include "motionPreference.h"
 #include "cli/appImageUtils.h"
 #include "cli/flatpakUtils.h"
@@ -23,6 +20,19 @@
 #include "mainWindow.h"
 #include "migrations.h"
 #include "themeManager.h"
+
+namespace
+{
+// How long to wait for the single-instance lock before concluding that
+// another copy of the app holds it.
+constexpr int LOCK_TIMEOUT_MS = 100;
+
+// Shown in the startup diagnostics for a version.json field that is missing.
+QString orUnknown(const QString& value)
+{
+    return value.isEmpty() == true ? QStringLiteral("unknown") : value;
+}
+} // namespace
 
 int main(int argc, char* argv[])
 {
@@ -38,28 +48,11 @@ int main(int argc, char* argv[])
         QApplication::installTranslator(&translator);
     }
 
-    // Read version from the embedded version.json so there is a single source of truth.
-    QString appVersion = QStringLiteral("unknown");
-    QString cliVersionTestedMin = QStringLiteral("unknown");
-    QString cliVersionTestedMax = QStringLiteral("unknown");
-    QFile vf(QStringLiteral(":/version.json"));
-    if (vf.open(QIODevice::ReadOnly))
-    {
-        const QJsonObject obj = QJsonDocument::fromJson(vf.readAll()).object();
-        vf.close();
-        if (obj.contains(QStringLiteral("app_version")))
-        {
-            appVersion = obj[QStringLiteral("app_version")].toString();
-        }
-        if (obj.contains(QStringLiteral("cli_version_tested_min")))
-        {
-            cliVersionTestedMin = obj[QStringLiteral("cli_version_tested_min")].toString();
-        }
-        if (obj.contains(QStringLiteral("cli_version_tested_max")))
-        {
-            cliVersionTestedMax = obj[QStringLiteral("cli_version_tested_max")].toString();
-        }
-    }
+    // version.json is the single source of truth for these.
+    const AppVersion::Info& versionInfo = AppVersion::embedded();
+    const QString appVersion = orUnknown(versionInfo.appVersion);
+    const QString cliVersionTestedMin = orUnknown(versionInfo.cliTestedMin);
+    const QString cliVersionTestedMax = orUnknown(versionInfo.cliTestedMax);
     QApplication::setApplicationVersion(appVersion);
 
     // Mirror DBG_* output to a rotating log file if the user has enabled it.
@@ -106,12 +99,11 @@ int main(int argc, char* argv[])
     // rather than showing Qt's default look (light, with stock buttons).
     ThemeManager::apply(AppConfig::instance().theme());
 
-    // Single-instance guard - prevent multiple copies running at the same time.
-    const QString lockPath = QDir::tempPath() + QStringLiteral("/proton-vpn-qt-app.lock");
-    QLockFile lockFile(lockPath);
+    // Single-instance guard - prevent multiple copies running at the same time
+    // for one user.
+    QLockFile lockFile(PlatformUtils::singleInstanceLockPath());
     lockFile.setStaleLockTime(0); // never treat a lock as stale
-    constexpr int lockTimeoutMs = 100;
-    if (lockFile.tryLock(lockTimeoutMs) == false)
+    if (lockFile.tryLock(LOCK_TIMEOUT_MS) == false)
     {
         qint64 pid = 0;
         QString hostname;
