@@ -263,6 +263,9 @@ sed -i "s|^Exec=.*|Exec=proton_vpn_qt|"  "${DESKTOP_DST}"
 sed -i "s|^Icon=.*|Icon=${APP_ID}|"      "${DESKTOP_DST}"
 
 cp "${SCRIPT_DIR}/proton-vpn-sign.svg" "${ICON_DIR}/${APP_ID}.svg"
+# appimagetool only looks for the AppStream metadata under its old .appdata.xml name.
+cp "${APPDIR}/usr/share/metainfo/${APP_ID}.metainfo.xml" \
+   "${APPDIR}/usr/share/metainfo/${APP_ID}.appdata.xml"
 cp "${DESKTOP_DST}"            "${APPDIR}/${APP_ID}.desktop"
 cp "${ICON_DIR}/${APP_ID}.svg" "${APPDIR}/${APP_ID}.svg"
 # appimagetool creates .DirIcon (the AppImage's file thumbnail) from a PNG named
