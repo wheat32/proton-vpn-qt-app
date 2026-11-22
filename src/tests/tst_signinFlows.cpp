@@ -27,9 +27,9 @@ private:
         QTest::newRow("1.0.3") << QStringLiteral("1.0.3") << SigninFlowKind::AuthenticatorCode;
         QTest::newRow("1.0.4") << QStringLiteral("1.0.4") << SigninFlowKind::SecurityKey;
         QTest::newRow("1.0.5") << QStringLiteral("1.0.5") << SigninFlowKind::SecurityKey;
-        QTest::newRow("1.1.0") << QStringLiteral("1.1.0") << SigninFlowKind::SecurityKey;
         QTest::newRow("1.0.10") << QStringLiteral("1.0.10") << SigninFlowKind::SecurityKey;
         QTest::newRow("1.1.0") << QStringLiteral("1.1.0") << SigninFlowKind::SecurityKey;
+        QTest::newRow("1.1.1") << QStringLiteral("1.1.1") << SigninFlowKind::SecurityKey;
         QTest::newRow("2.0.0") << QStringLiteral("2.0.0") << SigninFlowKind::SecurityKey;
         QTest::newRow("unreadable") << QString() << SigninFlowKind::SecurityKey;
     }
